@@ -2,9 +2,11 @@
  * clock.h - wall clock (date and time) on the STM32 RTC.
  *
  * The RTC runs from the LSI oscillator (PC14/PC15 are used by the LED matrix,
- * so there is no 32 kHz crystal). It keeps counting across MCU resets while
- * the board is powered, but not across a power loss; the GUI sets the time on
- * every connect. Clock_IsSet() reports whether the time was set since power-up.
+ * so there is no 32 kHz crystal). Rtc/rtc_trim.c measures the LSI against the
+ * HSE crystal and trims the RTC, so it keeps crystal accuracy. It keeps
+ * counting across MCU resets while the board is powered, but not across a
+ * power loss; the GUI sets the time on every connect. Clock_IsSet() reports
+ * whether the time was set since power-up.
  */
 #ifndef APP_CLOCK_H
 #define APP_CLOCK_H

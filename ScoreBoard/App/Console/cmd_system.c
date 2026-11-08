@@ -13,6 +13,7 @@
 #include "usb_keyboard.h"
 #include "app_main.h"
 #include "mode.h"
+#include "rtc_trim.h"
 #include "cmsis_os.h"
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +70,13 @@ static int P_Status(int argc, char **argv)
     Clock_Format(&t, now, sizeof now);
   }
   Cli_Printf("time=%s", now);
+  RtcTrim trim;
+  if (RtcTrim_Get(&trim) == 0)
+  {
+    Cli_Printf("lsi_hz=%lu.%03lu", (unsigned long)(trim.lsi_mhz / 1000u), (unsigned long)(trim.lsi_mhz % 1000u));
+    Cli_Printf("rtc_trim=prediv %u/%u cal %c%u", (unsigned)trim.prediv_a, (unsigned)trim.prediv_s,
+               trim.calp ? 'p' : 'm', (unsigned)trim.calm);
+  }
   Cli_Printf("uptime_s=%lu", (unsigned long)(osKernelGetTickCount() / 1000u));
   Cli_Printf("mode=%s", Mode_Current() ? Mode_Current()->name : "none");
   Cli_Printf("game=%s", P_GameState());

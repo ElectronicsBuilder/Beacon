@@ -77,6 +77,18 @@ void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
       {
         key = KB_ESC;
       }
+      else if (code == 0x28u || code == 0x58u)   /* Enter, keypad Enter */
+      {
+        key = KB_ENTER;
+      }
+      else if (code == 0x2Au)
+      {
+        key = KB_BACK;
+      }
+      else if (code == 0x4Cu)
+      {
+        key = KB_DEL;
+      }
       else
       {
         key = USBH_HID_GetASCIICode(info);

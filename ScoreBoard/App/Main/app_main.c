@@ -29,6 +29,7 @@
 #include "cli.h"
 #include "commands.h"
 #include "mode.h"
+#include "rtc_trim.h"
 #include "version.h"
 #include "cmsis_os.h"
 
@@ -80,7 +81,8 @@ void App_Init(void)
   RETURN_RANDOM_SERVER();
 
   EE_TEST();
-  Settings_Load();              // saved matrix brightness
+  Settings_Load();              // saved brightness and display mode
+  RtcTrim_Init();               // RTC accuracy: LSI measured against the crystal
   RTC_Configuration();
 
   /* OLED start-up check list */
@@ -177,6 +179,7 @@ void App_Run(void)
       Matrix_Refresh();            /* rebuilds the DMA data only if the image changed */
     }
     Settings_Poll();
+    RtcTrim_Poll();
     if (loops % 1000u == 0u)
     {
       app_task_stack_free = osThreadGetStackSpace(osThreadGetId());

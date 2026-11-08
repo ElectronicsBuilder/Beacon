@@ -32,6 +32,15 @@
 #endif
 #define LAYOUT_BIG_CHAR_W   (LAYOUT_BIG_FONT.Width * LAYOUT_BIG_SCALE)
 
+/* Editors (e.g. time entry): a title line and the edited text line */
+#if HEIGHT == 64
+#define LAYOUT_EDIT_TITLE_Y LAYOUT_LINE_Y(1)
+#define LAYOUT_EDIT_Y       LAYOUT_LINE_Y(2)
+#else
+#define LAYOUT_EDIT_TITLE_Y 4     /* upper band */
+#define LAYOUT_EDIT_Y       20    /* lower band, correct colours */
+#endif
+
 /* x that centres 'chars' characters of a font 'char_w' pixels wide */
 #define LAYOUT_CENTER_X(chars, char_w)  ((WIDTH - (int32_t)(chars) * (int32_t)(char_w)) / 2)
 
