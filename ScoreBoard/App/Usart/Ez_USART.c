@@ -11,6 +11,7 @@
 #include <math.h>
 #include "Ez_USART.h"
 
+
 #define USART_TX_TIMEOUT_MS 100u
 
 
@@ -62,6 +63,7 @@ void eol(USART_TypeDef *USARTx)
 
 void DISPLAY_INT2(USART_TypeDef *USARTx, uint32_t INT, uint16_t BASE, unsigned char EOL)
 {
+  char buffer[34];   /* 32 binary digits + sign + NUL */
   itoa(INT, buffer, BASE);
   if (EOL == 1)
   {

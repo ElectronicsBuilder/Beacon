@@ -82,9 +82,9 @@
          uint8_t G;
          uint8_t B;
  };
- struct color foreground_color;
- struct color background_color;
- struct color image[HEIGHT][WIDTH];//width height with each rgb
+ extern struct color foreground_color;
+ extern struct color background_color;
+ extern struct color image[HEIGHT][WIDTH];//width height with each rgb
 
 
 

@@ -6,15 +6,18 @@
 #include "RANDOM_NUMBER.h"
 #include "EEPROM.h"
 #include "eeprom_24lc.h"
-//#define SIM_EE_TRANSACTION
 
+/* Global variables declared in GAME.h (defined here once) */
+char ALL_TIME_SC[11][11][2];
+GAMERS PLAYER1, PLAYER2, GAMER0, GAMER1, GAMER2, GAMER3,
+GAMER4, GAMER5, GAMER6, GAMER7, GAMER8, GAMER9, GAMER10, GAMER_ALL[11];   /* 11 players, id 0..10 */
+RECEIVER COMM;
+STATUS GAME;
 
-char EE_SIM[500][32];
-uint16_t id;
+extern uint16_t id;   /* defined in TIM_CTRL.c */
 #define PLAYER_DATA_START_ADDR 0x0000
-uint16_t  GAMERS_START_ADDR = 0x0100;  // make this automatic
 
-uint16_t serv, serv_h;
+uint16_t serv;
 unsigned char CURRENT_SERVER[] = { no_server, PLAYER_1, PLAYER_2};
 
 //#define P_LOOKUP
@@ -38,27 +41,6 @@ uint16_t RETURN_GAME_SERVER(void)
 }
 
 
-#ifdef SIM_EE_TRANSACTION
-void store_to_eeprom(char *DATA, uint16_t address)
-{
-	//EE_SIM[address][0]= DATA;
-
-	for(i = 0; i <= I2C_EEPROM_PAGE; i++)
-	{
-		EE_SIM[address][i] = DATA[i];
-	}
-
-}
-
-void read_from_eeprom(char*DATA, uint16_t address)
-{
-	for(i = 0; i <= I2C_EEPROM_PAGE; i++)
-	{
-		DATA[i] = EE_SIM[address][i];
-	}
-}
-
-#endif
 
 
 GAMERS RETURN_SAVE_LOC(uint16_t id, GAMERS GAMERX)

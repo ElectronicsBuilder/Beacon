@@ -13,11 +13,15 @@
 
 #include "app_main.h"
 
+/* Global variables declared in TIM_CTRL.h (defined here once) */
+uint16_t UPDATE_COUNTER, SCREEN_SLEEP, SCREEN_SLEEP_MIN, SLEEP_STAT;
+
+
 
 
 int32_t scroll1=0,scroll2=0;
 
-uint16_t id, id2;
+uint16_t id, id2;   /* player selection indexes (also used by Comm.c and GAME.c) */
 
 
 void APP_TIM2_Tick(void)   /* RTC clock refresh, 1 s */

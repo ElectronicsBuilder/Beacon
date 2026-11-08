@@ -8,8 +8,6 @@
 
 #include "app_hal.h"
 
-#define I2C1_MULTIBYTE_ANZ 10
-uint8_t I2C1_DATA[I2C1_MULTIBYTE_ANZ];
 
 int16_t I2C1Bus_ReadByte16(uint8_t slave_adr, uint16_t adr);
 int16_t I2C1Bus_WriteByte16(uint8_t slave_adr, uint16_t adr, uint8_t wert);

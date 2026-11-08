@@ -194,7 +194,7 @@ extern OledFont Arial_7x10;
 extern OledFont FONT_4x6;
 extern OledFont Font_6x8;
 
-uint8_t rotation, TFT_WIDTH, TFT_HEIGHT;
+extern uint8_t rotation, TFT_WIDTH, TFT_HEIGHT;
 
 //--------------------------------------------------------------
 // Public functions

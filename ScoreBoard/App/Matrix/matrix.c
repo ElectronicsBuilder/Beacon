@@ -6,15 +6,19 @@
 #include <strings.h>
 #include <string.h>
 #include "FONT.h"
+
+/* Global variables declared in matrix.h (defined here once) */
+struct color foreground_color;
+struct color background_color;
+struct color image[HEIGHT][WIDTH];//width height with each rgb
+
 //#include "app_main.h"
 
 
 
 
 
- uint16_t abcd=0;
- uint32_t image_width_index=0,image_height_index=0,image_rgb_index=0;
- uint32_t pwm = 0, height=0, led_data_size=0, rgb_data=0, width=0,prescaler_size=0;
+ uint32_t height=0, led_data_size=0, width=0, prescaler_size=0;
  uint16_t led_data[LED_DATA_SIZE];//calculate led data array/size
  uint16_t prescaler[PRESCALER_SIZE];
  uint8_t color_correction[256];

@@ -15,6 +15,10 @@
 #include "delay.h"
 #include "oled_font.h"
 
+/* Global variables declared in SSD1351.h (defined here once) */
+uint8_t rotation, TFT_WIDTH, TFT_HEIGHT;
+
+
 
 
 //--------------------------------------------------------------

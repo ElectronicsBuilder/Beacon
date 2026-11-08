@@ -50,9 +50,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${APP_SOURCES}
 )
 
-# The original code defines its globals in headers; keep the pre-GCC10
-# "common symbol" behaviour for those files only.
-set_source_files_properties(${APP_SOURCES} PROPERTIES COMPILE_OPTIONS "-fcommon")
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE

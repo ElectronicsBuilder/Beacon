@@ -12,7 +12,7 @@
 #include "FONT.h"
 #include "rtc_clock.h"
 
-uint16_t id, id2;
+extern uint16_t id, id2;   /* defined in TIM_CTRL.c */
 
 
 

@@ -83,7 +83,7 @@ typedef struct
 }STATUS;
 
 
- char ALL_TIME_SC[11][11][2];   /* [player][opponent][own,opponent score], 11 players (id 0..10) */
+ extern char ALL_TIME_SC[11][11][2];   /* [player][opponent][own,opponent score], 11 players (id 0..10) */
 
 
 typedef struct
@@ -116,13 +116,13 @@ typedef struct
 
 
 
-GAMERS PLAYER1, PLAYER2, GAMER0, GAMER1, GAMER2, GAMER3,
-GAMER4, GAMER5, GAMER6, GAMER7, GAMER8, GAMER9, GAMER10, HOLD1, HOLD2,GAMER_ALL[10];
+extern GAMERS PLAYER1, PLAYER2, GAMER0, GAMER1, GAMER2, GAMER3,
+GAMER4, GAMER5, GAMER6, GAMER7, GAMER8, GAMER9, GAMER10, GAMER_ALL[11];   /* 11 players, id 0..10 */
 
 
-RECEIVER COMM;
+extern RECEIVER COMM;
 
-STATUS GAME;
+extern STATUS GAME;
 
 
 void  RETURN_RANDOM_SERVER(void);
@@ -145,5 +145,13 @@ GAMERS UPDATE_RETURN_SCORE(GAMERS GAMERX, GAMERS GAMERY);
 GAMERS TEST_READ_DATA2_SCORE(uint16_t id, GAMERS GAMERX);
 void UPDATE_TEST_GAMER(GAMERS GAMERX, uint16_t id);
 
+
+/*
+ * Ping-pong rules (notes from the original firmware):
+ *  Game 1: first to 11 points, win by 2, serve alternates every 2 points.
+ *  Game 2: first to 21 points, win by 2, serve alternates every 5 points.
+ *  The first server is chosen before the game (random).
+ *  All-time record between two players is kept (ALL_TIME_SC / player data).
+ */
 
 #endif /*_GAME_H*/

@@ -17,15 +17,9 @@ static void EE_WaitReady(void)
 
 /*---------------------------- Function Prototypes -------------------------*/
 
-char myString[I2C_EEPROM_PAGE] = 		{"Default String"};
-char myString1[I2C_EEPROM_PAGE] = 		{"Default String"};
-char myString2[I2C_EEPROM_PAGE] = 		{"Default String"};
-char myString3[I2C_EEPROM_PAGE] = 		{"Default String"};
 char WRITE_CHECK[I2C_EEPROM_PAGE] = 	{"Default String"};
 
-char TEST_STRING[I2C_EEPROM_PAGE];// = 	{"Default String"};
 
-char * TEST_STRING_H;
 
 char SAVED_FLAG[] = { 'S', 'A', 'V', 'E', 'D'};
 

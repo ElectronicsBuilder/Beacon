@@ -6,6 +6,9 @@
 #include "delay.h"
 #include "cmsis_os.h"
 
+/* Global variables declared in i2c1_bus.h (defined here once) */
+
+
 #define I2C1_TIMEOUT_MS 10u
 
 
