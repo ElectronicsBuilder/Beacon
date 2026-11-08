@@ -1,40 +1,30 @@
 /*
- * mode_clock.c - wall clock: big HH:MM:SS with the weekday and date.
+ * mode_clock.c - wall clock: big HH:MM:SS, the weekday and date, messages.
+ * What goes on each display line is set with "screen clock ..." (ui_bands).
  *
  * Keyboard: T or Enter opens the date/time editor (seconds are set to 0).
  */
 #include "mode.h"
 #include "mode_ui.h"
-#include "ui_ticker.h"
+#include "ui_bands.h"
 #include "clock.h"
 #include "keys.h"
 #include "log.h"
 #include <stdio.h>
-#include <string.h>
 
 #define CLOCK_POLL_MS 100u
 
 static uint32_t poll_count;
-static int8_t last_second;
-static TextLine sub_line;
-static Ticker ticker;
-static char own_text[20];               /* date line (messages may take turns) */
+static char big[12];
+static char sub[20];
 
-static void P_Draw(void)
+static void P_Update(void)
 {
-  char big[12];
-  char sub[20];
-
   if (Clock_IsSet())
   {
     static const char *const days[] = { "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN" };
     ClockTime t;
     Clock_Get(&t);
-    if ((int8_t)t.second == last_second)
-    {
-      return;
-    }
-    last_second = (int8_t)t.second;
     snprintf(big, sizeof big, "%02u:%02u:%02u", t.hour, t.minute, t.second);
     snprintf(sub, sizeof sub, "%s %04u-%02u-%02u",
              (t.weekday >= 1 && t.weekday <= 7) ? days[t.weekday - 1] : "---",
@@ -42,25 +32,16 @@ static void P_Draw(void)
   }
   else
   {
-    if (last_second == -2)
-    {
-      return;
-    }
-    last_second = -2;
     snprintf(big, sizeof big, "--:--:--");
     snprintf(sub, sizeof sub, "PRESS T TO SET");
   }
-  ModeUi_DrawBig(big, WHITE);
-  strcpy(own_text, sub);
-  if (!ticker.showing) TextLine_Set(&sub_line, sub, MODE_UI_TEXT_COLOR);
 }
 
 static void P_Redraw(void)
 {
-  last_second = -1;
-  TextLine_Init(&sub_line, LAYOUT_BIG_SUB_Y, MODE_UI_TEXT_COLOR);
-  Ticker_Reset(&ticker);
-  P_Draw();
+  calculateClearImage();
+  P_Update();
+  Bands_Enter(SCREEN_CLOCK);
 }
 
 static void P_Enter(void)
@@ -81,15 +62,12 @@ static void P_Tick(void)
     TimeEdit_Tick();
     return;
   }
-  MatrixColor color = MODE_UI_TEXT_COLOR;
-  const char *text = Ticker_Tick(&ticker, &sub_line, own_text, &color);
-  TextLine_Set(&sub_line, text, color);
-  TextLine_Tick(&sub_line);
   if (++poll_count >= CLOCK_POLL_MS)
   {
     poll_count = 0;
-    P_Draw();
+    P_Update();
   }
+  Bands_Tick(big, WHITE, sub, 1);
 }
 
 static void P_Key(uint8_t key)

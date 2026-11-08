@@ -54,6 +54,10 @@
 #define LAYOUT_MSG_L1_WHITE  1     /* upper band: only white is readable */
 #endif
 
+/* HUB75 fault on this board: the upper panel half (top data lines R1/G1/B1)
+ * only shows white correctly. Set to 0 once the wiring is fixed. */
+#define LAYOUT_TOP_HALF_WHITE_ONLY  1
+
 /* x that centres 'chars' characters of a font 'char_w' pixels wide */
 #define LAYOUT_CENTER_X(chars, char_w)  ((WIDTH - (int32_t)(chars) * (int32_t)(char_w)) / 2)
 

@@ -7,7 +7,7 @@
 #include "countdown.h"
 #include "mode.h"
 #include "mode_ui.h"
-#include "ui_ticker.h"
+#include "ui_bands.h"
 #include "clock.h"
 #include "clock_calc.h"
 #include "ee_record.h"
@@ -121,33 +121,31 @@ int Timer_Elapsed(uint32_t *secs)
 
 /* ------------------------------------------------------------ display */
 
-static TextLine line;
-static Ticker ticker;
-static char own_text[TIMER_TEXT_MAX + 16];   /* label line (messages may take turns) */
-static uint8_t at_zero;                      /* countdown ended: no messages over the end text */
 static uint32_t poll_count;
-static char last_big[12];
-static uint8_t last_big_color;
+static char big[12];
+static char own_text[TIMER_TEXT_MAX + 16];   /* days / label / end text */
+static uint8_t big_color = WHITE;
+static uint8_t at_zero;                 /* countdown ended: no messages over the end text */
 static uint8_t countup;                 /* which of the two modes is active */
 static int8_t was_running = -1;         /* countdown: for the "finished" log */
 
-static void P_Draw(void)
+static void P_Update(void)
 {
-  char big[12];
-  char text[TIMER_TEXT_MAX + 16];
-  uint8_t big_color = WHITE;
+  char *text = own_text;
+  size_t text_len = sizeof own_text;
   uint32_t secs;
   const char *label = countup ? cfg.cu_label : cfg.cd_label;
 
+  big_color = WHITE;
   if (!Clock_IsSet())
   {
     snprintf(big, sizeof big, "--:--:--");
-    snprintf(text, sizeof text, "SET THE CLOCK");
+    snprintf(text, text_len, "SET THE CLOCK");
   }
   else if ((countup ? Timer_Elapsed(&secs) : Timer_Remaining(&secs)) != 0)
   {
     snprintf(big, sizeof big, "--:--:--");
-    snprintf(text, sizeof text, "PRESS T TO SET");
+    snprintf(text, text_len, "PRESS T TO SET");
   }
   else
   {
@@ -155,19 +153,19 @@ static void P_Draw(void)
     if (!countup && secs == 0u)
     {
       big_color = RED;
-      snprintf(text, sizeof text, "%s", cfg.cd_end[0] ? cfg.cd_end : label);
+      snprintf(text, text_len, "%s", cfg.cd_end[0] ? cfg.cd_end : label);
     }
     else if (days > 0u)
     {
-      snprintf(text, sizeof text, label[0] ? "%luD %s" : "%lu DAYS", (unsigned long)days, label);
+      snprintf(text, text_len, label[0] ? "%luD %s" : "%lu DAYS", (unsigned long)days, label);
     }
     else
     {
-      snprintf(text, sizeof text, "%s", label);
+      snprintf(text, text_len, "%s", label);
     }
     if (countup && cfg.cu_stopped_at != 0u && text[0] == '\0')
     {
-      snprintf(text, sizeof text, "STOPPED");
+      snprintf(text, text_len, "STOPPED");
     }
     uint32_t now;
     if (countup && cfg.cu_stopped_at == 0u && P_Now(&now) == 0 && cfg.cu_start > now)
@@ -175,9 +173,9 @@ static void P_Draw(void)
       ClockTime s;                       /* start still ahead: say when */
       ClockCalc_FromSeconds(cfg.cu_start, &s);
       if (cfg.cu_start - now < 86400u)
-        snprintf(text, sizeof text, "STARTS %02u:%02u", s.hour, s.minute);
+        snprintf(text, text_len, "STARTS %02u:%02u", s.hour, s.minute);
       else
-        snprintf(text, sizeof text, "STARTS %04u-%02u-%02u", s.year, s.month, s.day);
+        snprintf(text, text_len, "STARTS %04u-%02u-%02u", s.year, s.month, s.day);
     }
     if (!countup)
     {
@@ -189,24 +187,19 @@ static void P_Draw(void)
       was_running = (int8_t)running;
     }
   }
-
-  if (strcmp(big, last_big) != 0 || big_color != last_big_color)
-  {
-    strcpy(last_big, big);
-    last_big_color = big_color;
-    ModeUi_DrawBig(big, big_color);
-  }
   at_zero = (uint8_t)(!countup && big_color == RED);
-  strcpy(own_text, text);
-  if (!ticker.showing || at_zero) TextLine_Set(&line, text, MODE_UI_TEXT_COLOR);
 }
 
 static void P_Redraw(void)
 {
-  last_big[0] = '\0';
-  TextLine_Init(&line, LAYOUT_BIG_SUB_Y, MODE_UI_TEXT_COLOR);
-  Ticker_Reset(&ticker);
-  P_Draw();
+  calculateClearImage();
+  P_Update();
+  Bands_Enter(countup ? SCREEN_COUNTUP : SCREEN_COUNTDOWN);
+}
+
+static void P_Draw(void)
+{
+  P_Update();
 }
 
 static void P_Enter(void)
@@ -231,18 +224,12 @@ static void P_Tick(void)
     TimeEdit_Tick();
     return;
   }
-  if (!at_zero)
-  {
-    MatrixColor color = MODE_UI_TEXT_COLOR;
-    const char *shown = Ticker_Tick(&ticker, &line, own_text, &color);
-    TextLine_Set(&line, shown, color);
-  }
-  TextLine_Tick(&line);
   if (++poll_count >= POLL_MS)
   {
     poll_count = 0;
-    P_Draw();
+    P_Update();
   }
+  Bands_Tick(big, big_color, own_text, !at_zero);
 }
 
 static void P_Key(uint8_t key)

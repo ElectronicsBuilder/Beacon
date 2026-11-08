@@ -20,8 +20,7 @@ typedef struct {
 
 void Ticker_Reset(Ticker *t);
 /* Every 1 ms with the line: returns the text to put on the line (the mode's
- * own text, or a message). *color is set to the message colour where the
- * line can show colours (not in the 32-row upper band). */
+ * own text, or a message); *color is set to the message colour. */
 const char *Ticker_Tick(Ticker *t, const TextLine *line, const char *own_text, MatrixColor *color);
 
 #endif

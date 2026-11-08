@@ -43,7 +43,7 @@ const char *Ticker_Tick(Ticker *t, const TextLine *line, const char *own_text, M
   }
   if (t->showing)
   {
-    if (!LAYOUT_MSG_L1_WHITE) *color = (MatrixColor)t->color;
+    *color = (MatrixColor)t->color;
     return t->text;
   }
   return own_text;

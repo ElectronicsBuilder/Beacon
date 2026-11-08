@@ -15,6 +15,7 @@
 #include "mode.h"
 #include "rtc_trim.h"
 #include "msg_store.h"
+#include "screen_layout.h"
 #include "cmsis_os.h"
 #include <stdlib.h>
 #include <string.h>
@@ -211,6 +212,61 @@ static int P_Mode(int argc, char **argv)
   return 0;
 }
 
+/* screen [name] [line kind | kind kind kind kind]: what each display line shows */
+static void P_ScreenPrint(int s)
+{
+  const ScreenLayout *l = Screen_Layout((ScreenId)s);
+  char text[96];
+  int n = snprintf(text, sizeof text, "%s:", Screen_Name((ScreenId)s));
+  for (int b = 0; b < SCREEN_BANDS; b++)
+  {
+    n += snprintf(text + n, sizeof text - (size_t)n, " %d=%s%s", b + 1,
+                  Screen_KindName((BandKind)l->kind[b]), Screen_BandVisible(b) ? "" : "*");
+  }
+  Cli_Printf("%s", text);
+}
+
+static int P_Screen(int argc, char **argv)
+{
+  if (argc >= 2)
+  {
+    int s = Screen_Find(argv[1]);
+    if (s < 0) return Cli_Error("screen: clock, countdown or countup");
+    if (argc == 4)
+    {
+      char *end;
+      long band = strtol(argv[2], &end, 10);
+      int kind = Screen_KindFind(argv[3]);
+      if (*end != '\0' || band < 1 || band > SCREEN_BANDS) return Cli_Error("line 1..%d", SCREEN_BANDS);
+      if (kind < 0) return Cli_Error("show: off, big, text, ticker or msg");
+      Screen_SetBand((ScreenId)s, (int)band - 1, (BandKind)kind);
+    }
+    else if (argc == 2 + SCREEN_BANDS)
+    {
+      int kinds[SCREEN_BANDS];
+      for (int b = 0; b < SCREEN_BANDS; b++)
+      {
+        kinds[b] = Screen_KindFind(argv[2 + b]);
+        if (kinds[b] < 0) return Cli_Error("show: off, big, text, ticker or msg");
+      }
+      for (int b = 0; b < SCREEN_BANDS; b++) Screen_SetBand((ScreenId)s, b, (BandKind)kinds[b]);
+    }
+    else if (argc != 2)
+    {
+      return Cli_Error("usage: screen <name> <line> <kind>  or  screen <name> <k1> <k2> <k3> <k4>");
+    }
+    P_ScreenPrint(s);
+  }
+  else
+  {
+    for (int s = 0; s < SCREEN_COUNT; s++) P_ScreenPrint(s);
+  }
+#if HEIGHT != 64
+  Cli_Printf("(* = not lit: lines 2 and 4 need the HUB75 E line, MATRIX_PANEL_ROWS=64)");
+#endif
+  return 0;
+}
+
 /* reboot */
 static int P_Reboot(int argc, char **argv)
 {
@@ -229,6 +285,8 @@ static const CliCommand system_commands[] = {
   { "log",    "[error|warn|info|debug]",  "show or set the log level",                    P_Log },
   { "echo",   "[on|off]",                 "off = machine mode (no echo/prompt)",          P_Echo },
   { "mode",   "[name|number]",            "list the display modes or switch (saved)",    P_Mode },
+  { "screen", "[clock|countdown|countup] [<line 1-4> <kind> | <k1> <k2> <k3> <k4>]",
+               "what each display line shows: off big text ticker msg", P_Screen },
   { "keys",   "",                         "single-key control of the mode (ESC to return)", P_Keys },
   { "reboot", "",                         "restart the board",                            P_Reboot },
 };

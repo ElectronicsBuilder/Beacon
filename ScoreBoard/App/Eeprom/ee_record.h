@@ -12,6 +12,7 @@
  *   0x0600..0x0DFF  messages, 96-byte slots (Services/msg_store.c)
  *   0x0E00..0x0EBF  countdown / count-up (Modes/mode_countdown.c)
  *   0x0EC0..0x0EDF  message playback settings (Services/msg_store.c)
+ *   0x0EE0..0x0EFF  screen line layouts (Modes/screen_layout.c)
  *   0x0F00..0x0F0F  settings (Eeprom/settings.c)
  *   0x0FFF          spare, used by the size detection (Eeprom24_Size)
  *   0x1000..end     more message slots on EEPROMs larger than 4 KB
@@ -24,6 +25,7 @@
 
 #define EE_RECORD_TIMER_ADDR   0x0E00u
 #define EE_RECORD_MSGCFG_ADDR  0x0EC0u
+#define EE_RECORD_SCREEN_ADDR  0x0EE0u
 
 int EeRecord_Load(uint16_t addr, void *data, size_t len);        /* 0 = ok */
 int EeRecord_Save(uint16_t addr, const void *data, size_t len);  /* 0 = ok */
