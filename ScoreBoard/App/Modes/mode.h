@@ -40,6 +40,8 @@ void Mode_Key(uint8_t key);
 /* the modes (mode_*.c) */
 extern const AppMode mode_pingpong;
 extern const AppMode mode_clock;
+extern const AppMode mode_countdown;
+extern const AppMode mode_countup;
 
 /* 1 while the ping-pong game owns the display (legacy radio/serial input is
  * only used then) */

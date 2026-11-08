@@ -12,6 +12,8 @@
 static const AppMode *const modes[] = {
   &mode_pingpong,
   &mode_clock,
+  &mode_countdown,
+  &mode_countup,
 };
 #define MODE_COUNT ((int)(sizeof modes / sizeof modes[0]))
 

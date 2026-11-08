@@ -9,6 +9,7 @@
 #include "rtc_trim_calc.h"
 #include "time_entry.h"
 #include "keys.h"
+#include "crc16.h"
 
 static int failures, checks;
 
@@ -176,12 +177,63 @@ static void test_time_entry(void)
   CHECK(TimeEntry_Key(&e, 'x') == TE_EDITING);   /* other keys are ignored */
 }
 
+static void test_seconds_and_durations(void)
+{
+  ClockTime t = { 2000, 1, 1, 0, 0, 0, 6 }, u;
+  CHECK(ClockCalc_ToSeconds(&t) == 0u);
+  t = (ClockTime){ 2000, 3, 1, 0, 0, 0, 0 };
+  CHECK(ClockCalc_ToSeconds(&t) == 60u * 86400u);             /* 31 + 29 days */
+  t = (ClockTime){ 2026, 11, 8, 4, 45, 1, 0 };
+  uint32_t s = ClockCalc_ToSeconds(&t);
+  CHECK(s == 847428301u);                                     /* 2026-11-08 04:45:01 */
+  ClockCalc_FromSeconds(s, &u);
+  CHECK(u.year == 2026 && u.month == 11 && u.day == 8 && u.hour == 4 && u.minute == 45 && u.second == 1 && u.weekday == 7);
+
+  /* round trip over every day boundary 2000..2099 */
+  int bad = 0;
+  for (uint32_t d = 0; d < 36524u; d += 1u)
+  {
+    ClockCalc_FromSeconds(d * 86400u + 86399u, &u);
+    if (!ClockCalc_IsValid(&u) || ClockCalc_ToSeconds(&u) != d * 86400u + 86399u) bad++;
+  }
+  CHECK(bad == 0);
+
+  /* leap day 2028-02-29 to 2028-03-01 */
+  ClockTime a = { 2028, 2, 29, 23, 59, 59, 0 }, b = { 2028, 3, 1, 0, 0, 0, 0 };
+  CHECK(ClockCalc_ToSeconds(&b) - ClockCalc_ToSeconds(&a) == 1u);
+
+  char hms[12];
+  CHECK(ClockCalc_FormatDuration(0, hms, sizeof hms) == 0 && strcmp(hms, "00:00:00") == 0);
+  CHECK(ClockCalc_FormatDuration(3u * 86400u + 3661u, hms, sizeof hms) == 3 && strcmp(hms, "01:01:01") == 0);
+  CHECK(ClockCalc_FormatDuration(86399u, hms, sizeof hms) == 0 && strcmp(hms, "23:59:59") == 0);
+
+  uint32_t secs;
+  CHECK(ClockCalc_ParseDuration("1h30m", &secs) == 0 && secs == 5400u);
+  CHECK(ClockCalc_ParseDuration("2d", &secs) == 0 && secs == 172800u);
+  CHECK(ClockCalc_ParseDuration("45s", &secs) == 0 && secs == 45u);
+  CHECK(ClockCalc_ParseDuration("90", &secs) == 0 && secs == 5400u);
+  CHECK(ClockCalc_ParseDuration("1d2h3m4s", &secs) == 0 && secs == 93784u);
+  CHECK(ClockCalc_ParseDuration("", &secs) != 0);
+  CHECK(ClockCalc_ParseDuration("h", &secs) != 0);
+  CHECK(ClockCalc_ParseDuration("10x", &secs) != 0);
+  CHECK(ClockCalc_ParseDuration("0m", &secs) != 0);
+  CHECK(ClockCalc_ParseDuration("99999999d", &secs) != 0);
+}
+
+static void test_crc16(void)
+{
+  CHECK(Crc16("123456789", 9) == 0x29B1u);
+  CHECK(Crc16("", 0) == 0xFFFFu);
+}
+
 int main(void)
 {
   test_clock();
   test_tokenizer();
   test_rtc_trim();
   test_time_entry();
+  test_seconds_and_durations();
+  test_crc16();
   printf("%d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;
 }

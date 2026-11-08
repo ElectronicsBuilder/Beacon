@@ -1,34 +1,22 @@
 /*
  * mode_clock.c - wall clock: big HH:MM:SS with the weekday and date.
  *
- * Keyboard: T or Enter opens the date/time editor ("YYYY-MM-DD HH:MM"):
- * digits overwrite, Left/Right/Backspace move, Enter saves (seconds = 0),
- * ESC cancels.
+ * Keyboard: T or Enter opens the date/time editor (seconds are set to 0).
  */
 #include "mode.h"
+#include "mode_ui.h"
 #include "clock.h"
-#include "time_entry.h"
 #include "keys.h"
-#include "layout.h"
-#include "FONT.h"
 #include "log.h"
 #include <stdio.h>
-#include <string.h>
 
-#define CLOCK_POLL_MS     100u
-#define BLINK_MS          400u
-#define INVALID_SHOW_MS   2000u
+#define CLOCK_POLL_MS 100u
 
 static uint32_t poll_count;
 static int8_t last_second;
-static uint8_t editing;
-static TimeEntry entry;
-static uint32_t edit_ms;           /* time in the editor (blink, messages) */
-static uint32_t invalid_until_ms;
+static TextLine sub_line;
 
-/* ---------------------------------------------------------------- clock view */
-
-static void P_DrawClock(void)
+static void P_Draw(void)
 {
   char big[12];
   char sub[20];
@@ -55,142 +43,73 @@ static void P_DrawClock(void)
       return;
     }
     last_second = -2;
-    strcpy(big, "--:--:--");
-    strcpy(sub, "PRESS T TO SET");
+    snprintf(big, sizeof big, "--:--:--");
+    snprintf(sub, sizeof sub, "PRESS T TO SET");
   }
-
-  CHANGE_FONT(WHITE);          /* white reads the same on both panel halves */
-  calculateLEDStringScaled(big, LAYOUT_CENTER_X(strlen(big), LAYOUT_BIG_CHAR_W), LAYOUT_BIG_Y,
-                           LAYOUT_BIG_FONT, LAYOUT_BIG_SCALE);
-#if HEIGHT == 64
-  CHANGE_FONT(BLUE);
-#else
-  CHANGE_FONT(WHITE);          /* upper band: only white is readable with the B1/G1 fault */
-#endif
-  calculateLEDString("                ", 0, LAYOUT_BIG_SUB_Y, Font8x8);
-  calculateLEDString(sub, LAYOUT_CENTER_X(strlen(sub), 8), LAYOUT_BIG_SUB_Y, Font8x8);
+  ModeUi_DrawBig(big, WHITE);
+  TextLine_Set(&sub_line, sub, MODE_UI_TEXT_COLOR);
 }
 
-/* ---------------------------------------------------------------- editor view */
-
-static void P_DrawEditor(void)
+static void P_Redraw(void)
 {
-  int invalid = (int32_t)(invalid_until_ms - edit_ms) > 0;
-  const char *title = invalid ? "INVALID DATE" : "SET DATE & TIME";
-
-  CHANGE_FONT(invalid ? RED : WHITE);
-  calculateLEDString("                ", 0, LAYOUT_EDIT_TITLE_Y, Font8x8);
-  calculateLEDString((char *)title, LAYOUT_CENTER_X(strlen(title), 8), LAYOUT_EDIT_TITLE_Y, Font8x8);
-
-  CHANGE_FONT(BLUE);
-  calculateLEDString(entry.text, 0, LAYOUT_EDIT_Y, Font8x8);
-  /* cursor: the digit in red, blinking with an underscore */
-  char cursor[2] = { ((edit_ms / BLINK_MS) % 2u) ? '_' : entry.text[entry.pos], '\0' };
-  CHANGE_FONT(RED);
-  calculateLEDString(cursor, entry.pos * 8, LAYOUT_EDIT_Y, Font8x8);
-  CHANGE_FONT(BLUE);
-}
-
-static void P_StartEditor(void)
-{
-  ClockTime t;
-  Clock_Get(&t);
-  if (!Clock_IsSet() || t.year < 2026)
-  {
-    t.year = 2026; t.month = 1; t.day = 1; t.hour = 0; t.minute = 0;
-  }
-  TimeEntry_Start(&entry, &t);
-  editing = 1;
-  edit_ms = 0;
-  invalid_until_ms = 0;
-  calculateClearImage();
-  P_DrawEditor();
-}
-
-static void P_StopEditor(void)
-{
-  editing = 0;
-  calculateClearImage();
   last_second = -1;
-  P_DrawClock();
+  TextLine_Init(&sub_line, LAYOUT_BIG_SUB_Y, MODE_UI_TEXT_COLOR);
+  P_Draw();
 }
-
-static void P_EditorKey(uint8_t key)
-{
-  /* restart the blink with the cursor digit visible; any key clears "INVALID" */
-  edit_ms = (edit_ms / (2u * BLINK_MS) + 1u) * (2u * BLINK_MS);
-  invalid_until_ms = 0;
-  switch (TimeEntry_Key(&entry, key))
-  {
-    case TE_DONE:
-    {
-      ClockTime t;
-      Clock_Get(&t);
-      if (TimeEntry_Get(&entry, &t) == 0 && Clock_Set(&t) == 0)
-      {
-        char text[24];
-        Clock_Format(&t, text, sizeof text);
-        LOG_I("Time set from the keyboard: %s", text);
-        P_StopEditor();
-        return;
-      }
-      invalid_until_ms = edit_ms + INVALID_SHOW_MS;
-      break;
-    }
-    case TE_CANCEL:
-      P_StopEditor();
-      return;
-    default:
-      break;
-  }
-  P_DrawEditor();
-}
-
-/* ---------------------------------------------------------------- mode */
 
 static void P_Enter(void)
 {
   poll_count = 0;
-  editing = 0;
-  last_second = -1;
-  P_DrawClock();
+  P_Redraw();
 }
 
 static void P_Exit(void)
 {
-  editing = 0;
+  TimeEdit_Stop();
 }
 
 static void P_Tick(void)
 {
-  if (editing)
+  if (TimeEdit_Active())
   {
-    uint32_t before = edit_ms / BLINK_MS;
-    int was_invalid = (int32_t)(invalid_until_ms - edit_ms) > 0;
-    edit_ms++;
-    int is_invalid = (int32_t)(invalid_until_ms - edit_ms) > 0;
-    if (edit_ms / BLINK_MS != before || was_invalid != is_invalid)
-    {
-      P_DrawEditor();
-    }
+    TimeEdit_Tick();
     return;
   }
+  TextLine_Tick(&sub_line);
   if (++poll_count >= CLOCK_POLL_MS)
   {
     poll_count = 0;
-    P_DrawClock();
+    P_Draw();
   }
 }
 
 static void P_Key(uint8_t key)
 {
-  if (editing)
+  if (TimeEdit_Active())
   {
-    P_EditorKey(key);
+    ClockTime t;
+    TimeEntryState st = TimeEdit_Key(key, &t);
+    if (st == TE_DONE && Clock_Set(&t) == 0)
+    {
+      char text[24];
+      Clock_Format(&t, text, sizeof text);
+      LOG_I("Time set from the keyboard: %s", text);
+    }
+    if (st != TE_EDITING)
+    {
+      TimeEdit_Stop();
+      P_Redraw();
+    }
   }
   else if (key == 't' || key == 'T' || key == KB_ENTER)
   {
-    P_StartEditor();
+    ClockTime t;
+    Clock_Get(&t);
+    if (!Clock_IsSet() || t.year < 2026)
+    {
+      t = (ClockTime){ 2026, 1, 1, 0, 0, 0, 4 };
+    }
+    TimeEdit_Start("SET DATE & TIME", &t);
   }
 }
 

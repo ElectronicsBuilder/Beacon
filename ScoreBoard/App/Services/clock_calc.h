@@ -14,4 +14,14 @@ int     ClockCalc_IsValid(const ClockTime *t);
  * Returns 0, or -1 if the text or the resulting date/time is invalid. */
 int     ClockCalc_Parse(const char *date, const char *time, ClockTime *t);
 
+/* Seconds since 2000-01-01 00:00:00 and back (2000..2099) */
+uint32_t ClockCalc_ToSeconds(const ClockTime *t);
+void     ClockCalc_FromSeconds(uint32_t secs, ClockTime *t);
+
+/* "HH:MM:SS" of the time within the day into hms; returns the whole days */
+uint32_t ClockCalc_FormatDuration(uint32_t secs, char *hms, size_t len);
+
+/* "1h30m", "2d", "45s", "90" (bare number = minutes) -> seconds; 0 = ok */
+int      ClockCalc_ParseDuration(const char *s, uint32_t *secs);
+
 #endif

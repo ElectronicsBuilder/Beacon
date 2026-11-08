@@ -30,6 +30,7 @@
 #include "commands.h"
 #include "mode.h"
 #include "rtc_trim.h"
+#include "countdown.h"
 #include "version.h"
 #include "cmsis_os.h"
 
@@ -144,11 +145,13 @@ void App_Init(void)
   CHANGE_FONT(BLUE);
 
   /* Display mode (ping-pong, clock, ...), the one saved in the EEPROM */
+  Timer_Load();                 // countdown / count-up settings
   Mode_Init();
 
   /* Console on USART3 */
   CmdSystem_Register();
   CmdGame_Register();
+  CmdTimer_Register();
   Cli_Init();
 }
 
@@ -180,6 +183,7 @@ void App_Run(void)
     }
     Settings_Poll();
     RtcTrim_Poll();
+    Timer_Poll();
     if (loops % 1000u == 0u)
     {
       app_task_stack_free = osThreadGetStackSpace(osThreadGetId());
