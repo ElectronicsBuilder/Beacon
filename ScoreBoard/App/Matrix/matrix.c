@@ -24,20 +24,29 @@
 #ifdef ENABLE_MATRIX
 
 /*
- * Brightness and gamma.
- * Each colour channel is shown with BRIGHTNESS (7) bit planes, so only bits 0..6
- * of a corrected value are displayed (0..127). The table maps an 8-bit colour
- * value (0..255) through gamma 2.0 and the global brightness to 0..127.
- * calculateLEDdata() uses the table, so a change shows on the next refresh.
+ * Gamma and brightness.
+ * Each colour channel is shown with BRIGHTNESS (7) bit planes (binary code
+ * modulation), so a corrected value is 0..127. The table only applies gamma 2.0;
+ * it keeps the full 7-bit range so grey levels are preserved at any brightness.
+ *
+ * Global brightness is done with the OE (output enable) line instead: plane k is
+ * displayed while plane k+1 is shifted in, so switching OE off for the tail of
+ * every 128-word shift window shortens all planes by the same fraction. The
+ * refresh rate (~117 Hz) stays the same, which avoids low-brightness flicker.
  */
 static uint8_t matrix_brightness = MATRIX_BRIGHTNESS_DEFAULT;   /* percent */
+static uint32_t matrix_oe_on_words = (WIDTH * MATRIX_BRIGHTNESS_DEFAULT) / 100u;
+volatile uint8_t matrix_dirty = 1;          /* image changed since the last calculateLEDdata() */
+
+/* Rebuild statistics, readable over the debugger (ST-Link hot-plug). */
+volatile uint32_t matrix_calc_cycles;       /* CPU cycles of the last rebuild */
+volatile uint32_t matrix_calc_count;        /* number of rebuilds since boot */
 
 void calcColorCorrection(void){
         const uint32_t max_level = (1u << BRIGHTNESS) - 1u;      /* 127 */
         for(uint32_t v=0; v<256; v++){
-                uint32_t g = (v * v + 127u) / 255u;                /* gamma 2.0, 0..255 */
-                uint32_t c = (g * max_level * matrix_brightness + (255u * 100u) / 2u) / (255u * 100u);
-                if (v != 0u && c == 0u && matrix_brightness != 0u) {
+                uint32_t c = (v * v * max_level + (255u * 255u) / 2u) / (255u * 255u);  /* gamma 2.0 */
+                if (v != 0u && c == 0u) {
                         c = 1;                                     /* keep dim colours visible */
                 }
                 color_correction[v] = (uint8_t)c;
@@ -48,7 +57,17 @@ void Matrix_SetBrightness(uint8_t percent){
         if (percent > 100u) percent = 100u;
         if (percent < MATRIX_BRIGHTNESS_MIN) percent = MATRIX_BRIGHTNESS_MIN;
         matrix_brightness = percent;
-        calcColorCorrection();
+        matrix_oe_on_words = (WIDTH * (uint32_t)percent + 50u) / 100u;
+        if (matrix_oe_on_words == 0u) matrix_oe_on_words = 1u;
+        matrix_dirty = 1;
+}
+
+/* Rebuild the DMA buffer only if something was drawn since the last rebuild. */
+void Matrix_Refresh(void){
+        if (matrix_dirty) {
+                matrix_dirty = 0;
+                calculateLEDdata();
+        }
 }
 
 uint8_t Matrix_GetBrightness(void){
@@ -63,7 +82,7 @@ void calcPrescaler(void){
         for(prescaler_width=0;prescaler_width<BRIGHTNESS-1;prescaler_width++){
                 prescaler_data[prescaler_width+1]=1<<prescaler_width;
         }
-        for(prescaler_width=0;prescaler_width<MODULES;prescaler_width++){
+        for(prescaler_width=0;prescaler_width<MATRIX_PSC_OFFSET;prescaler_width++){
                 prescaler[prescaler_size++]=prescaler_data[BRIGHTNESS-2];
         }
         for(prescaler_width=0;prescaler_width<WIDTH;prescaler_width++){
@@ -74,7 +93,7 @@ void calcPrescaler(void){
                         prescaler[prescaler_size++]=prescaler_data[prescaler_brightness];
                 }
         }
-        for(prescaler_width=0;prescaler_width<WIDTH-MODULES;prescaler_width++){
+        for(prescaler_width=0;prescaler_width<WIDTH-MATRIX_PSC_OFFSET;prescaler_width++){
                 prescaler[prescaler_size++]=prescaler_data[BRIGHTNESS-2];
         }
         #endif
@@ -141,50 +160,78 @@ void initLEDdata(void){
         DMA2_Stream2->M0AR = (uint32_t)&prescaler[0];
         P_DMA_Start(DMA2_Stream2, DMA_S2_FLAGS, prescaler_size);
 
+        /* The frame-end resync must not wait behind the long application work, so
+         * run it above the FreeRTOS-managed priorities (it calls no RTOS API).
+         * CubeMX forces >= 5 in the .ioc for FreeRTOS projects, so set it here. */
+        HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 1, 0);
+
         /* TIM8: DMA requests on CC1 and update, then start the clock output */
         __HAL_TIM_ENABLE_DMA(&htim8, TIM_DMA_CC1 | TIM_DMA_UPDATE);
         HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
 }
 
+#if OE != 0
+#error "calculateLEDdata() is written for an active-low OE line"
+#endif
+
+/* GPIOC bits for a scan row: A..D on PC12..PC15, E on PC2 (64-row panels). */
+static inline uint32_t P_RowAddress(uint32_t row){
+        return ((row & 0xFu) << 12) | ((row & 0x10u) ? MATRIX_E_BIT : 0u);
+}
+
+/*
+ * Build the DMA word stream from image[][] (same word layout as the original):
+ * GPIOC bits 2=row address E (64-row panels), 3=B2-line, 4=G2-line, 5=R2,
+ * 6=B1-line, 7=G1-line, 8=R1, 10=LAT, 11=OE (active low), 12..15=row address
+ * A..D. Per scan row: BRIGHTNESS planes of
+ * WIDTH words; the first plane is shifted with the previous row's address (that
+ * row's last plane is still on display), the latch word switches to this row.
+ * Bit mapping kept from the original ("RBG"): image .B -> bits 7/4, .G -> bits 6/3.
+ */
 void calculateLEDdata(void){
-                rgb_data=0;height=0;led_data_size=0;pwm=0;
-                //GPIO Pin configuration: 3=B2,4=G2,5=R2,6=B1,7=G1,8=R1,9=CLK,10=LAT,11=OE,12=A,13=B,14=C,15=D
-                for(height=0;height<(HEIGHT/2);height++){
-                        //check row line arrangement (for 16 we need 3bits, so only ABC is used, for 32 we use ABCD)
-                        #if HEIGHT<=16
-                        abcd=(((15+height)&0xf)<<12)&0x7000;//No D
-                        #elif HEIGHT<=32
-                        abcd=(((15+height)&0xf)<<12);
+        /* gamma-corrected channel values of one row pair, computed once per row */
+        static uint8_t top_r[WIDTH], top_g[WIDTH], top_b[WIDTH];
+        static uint8_t bot_r[WIDTH], bot_g[WIDTH], bot_b[WIDTH];
+        const uint32_t oe_on = matrix_oe_on_words;
+        const uint32_t start = DWT->CYCCNT;
+        uint32_t n = 0;
 
-
-
-                        #endif
-                        //pwm
-                        for(pwm=0;pwm<BRIGHTNESS;pwm++){
-                                for(width=0;width<(WIDTH-1);width++){
-                                        //change image[height][width].R and so on to according led pixel color of your display (this is RBG)
-                                        rgb_data=(((color_correction[image[height][width].R]>>pwm)&0x1)<<8)|(((color_correction[image[height][width].B]>>pwm)&0x1)<<7)|(((color_correction[image[height][width].G]>>pwm)&0x1)<<6)|(((color_correction[image[height+(HEIGHT/2)][width].R]>>pwm)&0x1)<<5)|(((color_correction[image[height+(HEIGHT/2)][width].B]>>pwm)&0x1)<<4)|(((color_correction[image[height+(HEIGHT/2)][width].G]>>pwm)&0x1)<<3);
-                                        #if OE==1
-                                        led_data[led_data_size++]=0x800|abcd|rgb_data;//ABCD,OE=1,LAT=0,CLK=0,R1=0,G1=0,B1=0,R2=0,G2=0,B2=0,NC,NC,NC
-                                        #elif OE==0
-                                        led_data[led_data_size++]=abcd|rgb_data;//0x800|abcd|e;//ABCD,OE=0,LAT=0,CLK=0,R1=0,G1=0,B1=0,R2=0,G2=0,B2=0,NC,NC,NC
-                                        #endif
+        for(uint32_t row=0; row<MATRIX_SCAN_ROWS; row++){
+                for(uint32_t col=0; col<WIDTH; col++){
+                        top_r[col] = color_correction[image[row][col].R];
+                        top_g[col] = color_correction[image[row][col].G];
+                        top_b[col] = color_correction[image[row][col].B];
+                        bot_r[col] = color_correction[image[row+(HEIGHT/2)][col].R];
+                        bot_g[col] = color_correction[image[row+(HEIGHT/2)][col].G];
+                        bot_b[col] = color_correction[image[row+(HEIGHT/2)][col].B];
+                }
+                uint32_t addr = P_RowAddress((row + MATRIX_SCAN_ROWS - 1u) % MATRIX_SCAN_ROWS); /* previous row while plane 0 shifts in */
+                for(uint32_t plane=0; plane<BRIGHTNESS; plane++){
+                        for(uint32_t col=0; col<WIDTH; col++){
+                                uint32_t bits = (((top_r[col] >> plane) & 1u) << 8) |
+                                                (((top_b[col] >> plane) & 1u) << 7) |
+                                                (((top_g[col] >> plane) & 1u) << 6) |
+                                                (((bot_r[col] >> plane) & 1u) << 5) |
+                                                (((bot_b[col] >> plane) & 1u) << 4) |
+                                                (((bot_g[col] >> plane) & 1u) << 3);
+                                if (col < WIDTH - 1u) {
+                                        /* shift word: OE on (0) for the first oe_on words, off (0x800) after */
+                                        led_data[n++] = (uint16_t)(addr | bits | ((col >= oe_on) ? 0x800u : 0u));
+                                } else {
+                                        /* last column: OE off + latch, switch to this row's address */
+                                        addr = P_RowAddress(row);
+                                        led_data[n++] = (uint16_t)(0xC00u | addr | bits);
                                 }
-                                //last data line with latch
-                                abcd=(height<<12);
-                                //change image[height][width].R and so on to according led pixel color of your display (this is RBG)
-                                rgb_data=(((color_correction[image[height][width].R]>>pwm)&0x1)<<8)|(((color_correction[image[height][width].B]>>pwm)&0x1)<<7)|(((color_correction[image[height][width].G]>>pwm)&0x1)<<6)|(((color_correction[image[height+(HEIGHT/2)][width].R]>>pwm)&0x1)<<5)|(((color_correction[image[height+(HEIGHT/2)][width].B]>>pwm)&0x1)<<4)|(((color_correction[image[height+(HEIGHT/2)][width].G]>>pwm)&0x1)<<3);
-                                #if OE==1
-                                led_data[led_data_size++]=0x400|abcd|rgb_data;//ABCD,OE=0,LAT=1,CLK=0,R1=0,G1=0,B1=0,R2=0,G2=0,B2=0,NC,NC,NC
-                                #elif OE==0
-                                led_data[led_data_size++]=0xC00|abcd|rgb_data;//ABCD,OE=1,LAT=1,CLK=0,R1=0,G1=0,B1=0,R2=0,G2=0,B2=0,NC,NC,NC
-                                #endif
                         }
                 }
-
+        }
+        led_data_size = n;
+        matrix_calc_cycles = DWT->CYCCNT - start;
+        matrix_calc_count++;
 }
 
 void calculateTestLEDData(void){
+        matrix_dirty = 1;
         uint32_t height,width;
         static uint32_t offset=0;
         static uint8_t brightness=0;
@@ -214,6 +261,15 @@ void calculateTestLEDData(void){
         brightness++;
 }
 
+/* Set one pixel; mark the image dirty only if the colour really changes. */
+static inline void P_SetPixel(uint32_t y, uint32_t x, const struct color *c){
+        struct color *p = &image[y][x];
+        if (p->R != c->R || p->G != c->G || p->B != c->B) {
+                *p = *c;
+                matrix_dirty = 1;
+        }
+}
+
 void calculateLEDString(char *s, int32_t x, int32_t y, sFONT font){
         int32_t i,l,j;
         while(*s){
@@ -221,15 +277,8 @@ void calculateLEDString(char *s, int32_t x, int32_t y, sFONT font){
                         l=font.table[((*s)-32)*(font.Height)+i];
                         for(j=0;j<font.Width;j++){
                                 if(WIDTH>x+(font.Width-1-j) && x+(font.Width-1-j)>=0){//check width
-                                        if((l>>j)&0x1){
-                                                image[y+i][x+(font.Width-1-j)].R=foreground_color.R;
-                                                image[y+i][x+(font.Width-1-j)].G=foreground_color.G;
-                                                image[y+i][x+(font.Width-1-j)].B=foreground_color.B;
-                                        }else{
-                                                image[y+i][x+(font.Width-1-j)].R=background_color.R;
-                                                image[y+i][x+(font.Width-1-j)].G=background_color.G;
-                                                image[y+i][x+(font.Width-1-j)].B=background_color.B;
-                                        }
+                                        P_SetPixel((uint32_t)(y+i), (uint32_t)(x+(font.Width-1-j)),
+                                                   ((l>>j)&0x1) ? &foreground_color : &background_color);
                                 }
                         }
                 }
@@ -239,6 +288,7 @@ void calculateLEDString(char *s, int32_t x, int32_t y, sFONT font){
 }
 
 void calculateLine(uint32_t x, uint32_t y, uint32_t width, uint32_t height, struct color line_color){
+        matrix_dirty = 1;
         for(;x<width;x++){
                 for(;y<height;y++){
                         image[y][x].R=line_color.R;
@@ -264,9 +314,7 @@ void calculatePixel(uint32_t x, uint32_t y,uint16_t color)
 //EXPERIMENTAL
 void DISPLAY_PIXEL(uint32_t x, uint32_t y)
 {
-    image[y][x].R=foreground_color.R;
-    image[y][x].G=foreground_color.G;
-    image[y][x].B=foreground_color.B;
+    P_SetPixel(y, x, &foreground_color);
     //calculateLEDdata();
 }
 
@@ -346,6 +394,7 @@ void UG_DrawBMP( UG_S16 xp, UG_S16 yp, EZ_BMP* bmp )
 
 
 void calculateRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, struct color frame_color, struct color fill_color){
+        matrix_dirty = 1;
         //fill
         for(;x<width;x++){
                 for(;y<height;y++){
@@ -362,6 +411,7 @@ void calculateRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height,
 }
 
 void calculateClearImage(void){
+        matrix_dirty = 1;
         for(height=0;height<HEIGHT;height++){
                         for(width=0;width<WIDTH;width++){
                                 image[height][width].R=0x0;

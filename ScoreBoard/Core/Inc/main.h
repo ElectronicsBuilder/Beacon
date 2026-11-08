@@ -73,8 +73,8 @@ void Error_Handler(void);
 #define MTX_D_GPIO_Port GPIOC
 #define USB_PWR_EN_Pin GPIO_PIN_0
 #define USB_PWR_EN_GPIO_Port GPIOC
-#define MTX_PC2_NC_Pin GPIO_PIN_2
-#define MTX_PC2_NC_GPIO_Port GPIOC
+#define MTX_E_Pin GPIO_PIN_2
+#define MTX_E_GPIO_Port GPIOC
 #define MTX_B2_Pin GPIO_PIN_3
 #define MTX_B2_GPIO_Port GPIOC
 #define RADIO_CONFIG_Pin GPIO_PIN_1

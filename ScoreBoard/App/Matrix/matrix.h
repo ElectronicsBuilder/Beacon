@@ -38,21 +38,42 @@
 #include "FONT.h"
 
 
-#define OE      0//define if oe is high active=1 or low active=0
-//max. tested resolutions: WIDTH 32*8, HEIGHT 16, recommended MODULES<=6 with HEIGHT=16 and WIDTH=32
+#define OE      0   // OE is active low
 
+/*
+ * Panel geometry: two chained 64x64 HUB75 panels = 128 columns.
+ *
+ * MATRIX_PANEL_ROWS 32: drive 32 rows (1/16 scan, address lines A-D only).
+ *     This is how the original board is wired (HUB75 pin 8 / E tied to GND):
+ *     image rows 0-15 appear on panel rows 0-15, rows 16-31 on panel rows 32-47.
+ * MATRIX_PANEL_ROWS 64: full 64x64 (1/32 scan). Needs the E line (HUB75E pin 8)
+ *     driven from PC2 instead of GND. Uses 6-bit grayscale (64 levels) so the
+ *     refresh rate stays ~110 Hz with twice the scan rows.
+ */
+#ifndef MATRIX_PANEL_ROWS
+#define MATRIX_PANEL_ROWS  32
+#endif
 
+#define WIDTH           128
+#if MATRIX_PANEL_ROWS == 64
+#define HEIGHT          64
+#define BRIGHTNESS      6   // bit planes (6 bit = 64 grey levels)
+#define MATRIX_E_BIT    (1u << 2)   // PC2 = row address E
+#elif MATRIX_PANEL_ROWS == 32
+#define HEIGHT          32
+#define BRIGHTNESS      7   // bit planes (7 bit = 128 grey levels)
+#define MATRIX_E_BIT    0u
+#else
+#error "MATRIX_PANEL_ROWS must be 32 or 64"
+#endif
+#define MATRIX_SCAN_ROWS (HEIGHT / 2)   // rows per scan (top half + bottom half lit together)
 
-//#define PRESCALER_SIZE  WIDTH*BRIGHTNESS
-//#define LED_DATA_SIZE   PRESCALER_SIZE*(HEIGHT/2)
+/* Words at the start of each shift window that still use the previous plane's
+ * prescaler (DMA/timer pipeline offset of the original design). */
+#define MATRIX_PSC_OFFSET 4
 
-#define MODULES 4
-#define WIDTH           32*MODULES//HUB08 type:64, HUB75 type:32
-#define HEIGHT  32//HUB08 type:32, HUB75 type:16
-#define BRIGHTNESS      7// 8 //in Bit, ex. 8 bit=2^8=256 steps
-
-#define PRESCALER_SIZE  WIDTH*BRIGHTNESS
-#define LED_DATA_SIZE   PRESCALER_SIZE*(HEIGHT)  //h/2
+#define PRESCALER_SIZE  (WIDTH * BRIGHTNESS)
+#define LED_DATA_SIZE   (PRESCALER_SIZE * MATRIX_SCAN_ROWS)
 
 
  //the pixel image in RGB
@@ -74,6 +95,8 @@
  #define MATRIX_BRIGHTNESS_MIN      5
  #define MATRIX_BRIGHTNESS_STEP     10
  void Matrix_SetBrightness(uint8_t percent);
+ void Matrix_Refresh(void);                 /* rebuild the DMA data if the image changed */
+ extern volatile uint8_t matrix_dirty;
  uint8_t Matrix_GetBrightness(void);
  void calcPrescaler(void);
  void APP_DMA2_Stream1_IRQ(void);

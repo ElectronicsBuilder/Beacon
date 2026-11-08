@@ -56,7 +56,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, LED_GREEN_Pin|LED_ORANGE_Pin|LED_RED_Pin|LED_BLUE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, MTX_B_Pin|MTX_C_Pin|MTX_D_Pin|MTX_PC2_NC_Pin
+  HAL_GPIO_WritePin(GPIOC, MTX_B_Pin|MTX_C_Pin|MTX_D_Pin|MTX_E_Pin
                           |MTX_B2_Pin|MTX_G2_Pin|MTX_R2_Pin|MTX_B1_Pin
                           |MTX_G1_Pin|MTX_R1_Pin|MTX_LAT_Pin|MTX_OE_Pin
                           |MTX_A_Pin, GPIO_PIN_RESET);
@@ -86,11 +86,11 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : MTX_B_Pin MTX_C_Pin MTX_D_Pin MTX_PC2_NC_Pin
+  /*Configure GPIO pins : MTX_B_Pin MTX_C_Pin MTX_D_Pin MTX_E_Pin
                            MTX_B2_Pin MTX_G2_Pin MTX_R2_Pin MTX_B1_Pin
                            MTX_G1_Pin MTX_R1_Pin MTX_LAT_Pin MTX_OE_Pin
                            MTX_A_Pin */
-  GPIO_InitStruct.Pin = MTX_B_Pin|MTX_C_Pin|MTX_D_Pin|MTX_PC2_NC_Pin
+  GPIO_InitStruct.Pin = MTX_B_Pin|MTX_C_Pin|MTX_D_Pin|MTX_E_Pin
                           |MTX_B2_Pin|MTX_G2_Pin|MTX_R2_Pin|MTX_B1_Pin
                           |MTX_G1_Pin|MTX_R1_Pin|MTX_LAT_Pin|MTX_OE_Pin
                           |MTX_A_Pin;

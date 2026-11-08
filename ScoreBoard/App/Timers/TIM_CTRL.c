@@ -400,7 +400,7 @@ void APP_TIM5_Tick(void) // usb device not supported handler
 timer_count++;
 if(timer_count >= 2)
 {
-	  calculateLEDdata();
+	  Matrix_Refresh();          /* only rebuilds the DMA data when the image changed */
 }
 
 
