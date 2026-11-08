@@ -56,6 +56,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     App/Main
     App/Console
+    App/Services
     App/Usart
     App/Timers
     App/Rtc

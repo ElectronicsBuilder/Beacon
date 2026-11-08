@@ -12,7 +12,7 @@
 #include "status_led.h"
 #include "dig_out.h"
 #include "delay.h"
-#include "rtc_clock.h"
+#include "game_clock.h"
 #include "EEPROM.h"
 #include "i2c_selftest.h"
 #include "GAME.h"
@@ -26,6 +26,8 @@
 #include "uart_rx.h"
 #include "settings.h"
 #include "log.h"
+#include "cli.h"
+#include "commands.h"
 #include "version.h"
 #include "cmsis_os.h"
 
@@ -172,6 +174,11 @@ void App_Init(void)
   INIT_TIMER_CONFIG(RCC_APB1Periph_TIM7, TIM7_IRQn, TIM7, 10);     // keyboard poll
   STOP_UPDATE();
   RESUME_UPDATE();
+
+  /* Console on USART3 */
+  CmdSystem_Register();
+  CmdGame_Register();
+  Cli_Init();
 }
 
 /*

@@ -9,7 +9,7 @@
 #include "GAME.h"
 #include "matrix.h"
 #include "FONT.h"
-#include "rtc_clock.h"
+#include "game_clock.h"
 
 #include "app_main.h"
 

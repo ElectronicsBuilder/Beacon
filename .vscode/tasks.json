@@ -50,6 +50,15 @@
             "problemMatcher": []
         },
         {
+            "label": "host tests",
+            "detail": "Builds and runs the PC unit tests (clock maths, command parser) with Cygwin gcc",
+            "type": "shell",
+            "command": "C:/cygwin64/bin/bash.exe",
+            "args": ["-lc", "cd \"$(cygpath '${workspaceFolder}')/ScoreBoard\" && sh tests/host/run_tests.sh"],
+            "group": "test",
+            "problemMatcher": "$gcc"
+        },
+        {
             "label": "regenerate CubeMX code",
             "detail": "Regenerates from ScoreBoard.ioc with CubeMX 6.15 (USER CODE sections and App/ are kept)",
             "type": "shell",

@@ -10,7 +10,7 @@
 #include "Ez_USART.h"
 #include "app_main.h"
 #include "FONT.h"
-#include "rtc_clock.h"
+#include "game_clock.h"
 
 extern uint16_t id, id2;   /* defined in TIM_CTRL.c */
 

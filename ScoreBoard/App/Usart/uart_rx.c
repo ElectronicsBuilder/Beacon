@@ -7,6 +7,7 @@
 #include "uart_rx.h"
 #include "app_hal.h"
 #include "Comm.h"
+#include "cli.h"
 
 #define UART_RX_SIZE 128u   /* bytes per port; commands are short */
 
@@ -72,6 +73,6 @@ void UartRx_Poll(void)
   }
   while (P_Pop(&rx_usart3, &b))
   {
-    APP_USART3_Byte((char)b);
+    Cli_Input((char)b);       /* USART3 = console (legacy keys via the "keys" command) */
   }
 }

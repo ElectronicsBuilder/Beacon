@@ -2,6 +2,8 @@
 
 #include "EEPROM.h"
 #include "log.h"
+
+uint8_t eeprom_ok;   /* result of EE_TEST() at boot */
 #include "Ez_USART.h"
 #include "i2c1_bus.h"
 
@@ -55,6 +57,7 @@ void EE_TEST(void)
 	  if (I2C_CheckDevice(I2C_EEPROM_ADDR) != OK)
 	  {
 
+	    eeprom_ok = 0;
 	    LOG_E("EEPROM (I2C 0x%02X) not responding", I2C_EEPROM_ADDR);
 
 
@@ -66,6 +69,7 @@ void EE_TEST(void)
 
 	  else{
 
+		  eeprom_ok = 1;
 		  LOG_I("EEPROM ok");
 
 		   //store_to_eeprom_single(0, 10)

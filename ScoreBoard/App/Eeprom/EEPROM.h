@@ -49,6 +49,7 @@ typedef enum EE_I2C
 
 
 void EE_TEST(void);
+extern uint8_t eeprom_ok;   /* 1 = EEPROM answered at boot */
 uint16_t  CHECK_SAVED(void);
 void read_from_eeprom(char* myString, uint16_t addr_ptr);
 void store_to_eeprom(char* myString, uint16_t addr_ptr);

@@ -3,7 +3,8 @@
  *
  * The USART interrupts only store the received byte (APP_USARTx_IRQ, called from
  * the USER CODE section of the CubeMX IRQ handlers). UartRx_Poll() runs in the
- * App task and hands every byte to the command handlers in Comm.c.
+ * App task: USART2 bytes go to the radio handler in Comm.c, USART3 bytes to
+ * the console (Console/cli.c).
  */
 #ifndef APP_UART_RX_H
 #define APP_UART_RX_H

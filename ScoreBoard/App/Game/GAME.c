@@ -208,53 +208,6 @@ GAMERS TEST_READ_DATA2_SCORE(uint16_t id, GAMERS GAMERX)
 
 
 
-/* Print a player's record (name, message, wins and points against each
- * other player). Used by the console "game stats" command. */
-void DISPLAY_PLAYER_INFO(GAMERS GAMERX)
-{
-	eol(USART3);
-	USART_puts(USART3, "GAMER NAME -> "); USART_puts(USART3, GAMERX.name); eol(USART3);
-	USART_puts(USART3, "GAMER MESSAGE -> "); USART_puts(USART3,  GAMERX.message); eol(USART3);
-	USART_puts(USART3, "GAMER DATA -> "); //USART_puts(USART3, GAMERX.PLAYER_DATA); eol(USART3);
-
-	//eol(USART3);
-
-/*
-	for(n = 0; n < 11; n++)
-	{
-		//Eeprom24_WriteByte(EE24_ADDR_0,(GAMERX.PD_loc + n), 0); // reset all
-		GAMERX.PLAYER_DATA[n] = Eeprom24_ReadByte(EE24_ADDR_0, (GAMERX.PD_loc + n));
-	}
-*/
-    for(m = 0;  m < 11; m++ )
-    {
-      DISPLAY_INT2(USART3,  GAMERX.PLAYER_DATA[m], 10, 0);
-      USART_puts(USART3, "--");
-    }
-
-    eol(USART3);
-
-	USART_puts(USART3, "SCORE DATA -> "); //USART_puts(USART3, GAMERX.SAVED_SCORE_DATA);eol(USART3);
-
-/*	for(n = 0; n < 11; n++)
-	{
-
-	//	Eeprom24_WriteByte(EE24_ADDR_0,(GAMERX.score_data_loc + n), 0); // reset all
-		GAMERX.SAVED_SCORE_DATA[n] = Eeprom24_ReadByte(EE24_ADDR_0, (GAMERX.score_data_loc + n));
-	}
-*/
-    for(m = 0;  m < 11; m++ )
-    {
-      DISPLAY_INT2(USART3,  GAMERX.SAVED_SCORE_DATA[m], 10, 0);
-      USART_puts(USART3, "--");
-    }
-
-
-	eol(USART3);
-
-
-	//USART_puts(USART3, GAMERX.SCORE_DATA); eol(USART3);
-}
 
 void TEST_GAMERS2(GAMERS GAMERX, uint16_t id)
 {
