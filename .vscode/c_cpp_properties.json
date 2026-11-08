@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "STM32",
+            "includePath": [
+                "${workspaceFolder}/ScoreBoard/**"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F429xx",
+                "DEBUG"
+            ],
+            "compilerPath": "C:/ST/STM32CubeCLT_1.16.0/GNU-tools-for-STM32/bin/arm-none-eabi-gcc.exe",
+            "cStandard": "c11",
+            "intelliSenseMode": "gcc-arm",
+            "compileCommands": [
+                "${workspaceFolder}/ScoreBoard/build/Debug/compile_commands.json"
+            ]
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,69 @@
+{
+    "version": "2.0.0",
+    "options": {
+        "cwd": "${workspaceFolder}/ScoreBoard"
+    },
+    "tasks": [
+        {
+            "label": "configure",
+            "type": "shell",
+            "command": "cmake --preset Debug",
+            "problemMatcher": []
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cmake --build --preset Debug",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation": "absolute"
+            }
+        },
+        {
+            "label": "clean build",
+            "type": "shell",
+            "command": "cmake --build --preset Debug --clean-first",
+            "group": "build",
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation": "absolute"
+            }
+        },
+        {
+            "label": "flash",
+            "type": "shell",
+            "command": "C:/ST/STM32CubeCLT_1.16.0/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe",
+            "args": [
+                "-c",
+                "port=SWD",
+                "mode=UR",
+                "-w",
+                "build/Debug/ScoreBoard.elf",
+                "-v",
+                "-rst"
+            ],
+            "dependsOn": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "regenerate CubeMX code",
+            "detail": "Regenerates from ScoreBoard.ioc with CubeMX 6.15 (USER CODE sections and App/ are kept)",
+            "type": "shell",
+            "command": "Set-Content -Path $env:TEMP/scoreboard_gen.txt -Value \"config load ${workspaceFolder}/ScoreBoard/ScoreBoard.ioc`nproject generate`nexit\"; & 'C:/Users/USER/AppData/Local/Programs/STM32CubeMX/STM32CubeMX.exe' -q $env:TEMP/scoreboard_gen.txt",
+            "options": {
+                "shell": {
+                    "executable": "powershell.exe",
+                    "args": [
+                        "-NoProfile",
+                        "-Command"
+                    ]
+                }
+            },
+            "problemMatcher": []
+        }
+    ]
+}

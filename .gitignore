@@ -1,0 +1,22 @@
+# Build output
+build/
+**/build/
+*.o
+*.d
+*.su
+*.map
+*.elf
+!Existing_Code/**/*.elf
+*.bin
+!Existing_Code/**/*.bin
+*.hex
+!Existing_Code/**/*.hex
+
+# CubeMX temporary files
+MXTmpFiles/
+*.bak
+
+# Editor / OS
+.vs/
+*.swp
+Thumbs.db
