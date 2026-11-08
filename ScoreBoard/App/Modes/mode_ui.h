@@ -14,9 +14,9 @@
 /* Colour of the text line next to the big digits. With 32 rows that line is
  * in the upper band, where only white is readable (B1/G1 wiring fault). */
 #if HEIGHT == 64
-#define MODE_UI_TEXT_COLOR  BLUE
+#define MODE_UI_TEXT_COLOR  MTX_C_GREEN
 #else
-#define MODE_UI_TEXT_COLOR  WHITE
+#define MODE_UI_TEXT_COLOR  MTX_C_WHITE
 #endif
 
 /* Big "HH:MM:SS" (8 characters, full width) */

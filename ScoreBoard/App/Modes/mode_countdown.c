@@ -7,6 +7,7 @@
 #include "countdown.h"
 #include "mode.h"
 #include "mode_ui.h"
+#include "ui_ticker.h"
 #include "clock.h"
 #include "clock_calc.h"
 #include "ee_record.h"
@@ -121,6 +122,9 @@ int Timer_Elapsed(uint32_t *secs)
 /* ------------------------------------------------------------ display */
 
 static TextLine line;
+static Ticker ticker;
+static char own_text[TIMER_TEXT_MAX + 16];   /* label line (messages may take turns) */
+static uint8_t at_zero;                      /* countdown ended: no messages over the end text */
 static uint32_t poll_count;
 static char last_big[12];
 static uint8_t last_big_color;
@@ -192,13 +196,16 @@ static void P_Draw(void)
     last_big_color = big_color;
     ModeUi_DrawBig(big, big_color);
   }
-  TextLine_Set(&line, text, MODE_UI_TEXT_COLOR);
+  at_zero = (uint8_t)(!countup && big_color == RED);
+  strcpy(own_text, text);
+  if (!ticker.showing || at_zero) TextLine_Set(&line, text, MODE_UI_TEXT_COLOR);
 }
 
 static void P_Redraw(void)
 {
   last_big[0] = '\0';
   TextLine_Init(&line, LAYOUT_BIG_SUB_Y, MODE_UI_TEXT_COLOR);
+  Ticker_Reset(&ticker);
   P_Draw();
 }
 
@@ -223,6 +230,12 @@ static void P_Tick(void)
   {
     TimeEdit_Tick();
     return;
+  }
+  if (!at_zero)
+  {
+    MatrixColor color = MODE_UI_TEXT_COLOR;
+    const char *shown = Ticker_Tick(&ticker, &line, own_text, &color);
+    TextLine_Set(&line, shown, color);
   }
   TextLine_Tick(&line);
   if (++poll_count >= POLL_MS)

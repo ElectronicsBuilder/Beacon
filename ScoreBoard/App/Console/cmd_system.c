@@ -14,6 +14,7 @@
 #include "app_main.h"
 #include "mode.h"
 #include "rtc_trim.h"
+#include "msg_store.h"
 #include "cmsis_os.h"
 #include <stdlib.h>
 #include <string.h>
@@ -84,6 +85,7 @@ static int P_Status(int argc, char **argv)
   Cli_Printf("player2=%s", PLAYER2.name);
   Cli_Printf("score=%u:%u", (unsigned)PLAYER1.score, (unsigned)PLAYER2.score);
   Cli_Printf("brightness=%u", (unsigned)Matrix_GetBrightness());
+  Cli_Printf("messages=%d/%d", MsgStore_Count(), MsgStore_Capacity());
   Cli_Printf("usb=%s", P_UsbState());
   Cli_Printf("stack_free=%lu", (unsigned long)app_task_stack_free);
   return 0;

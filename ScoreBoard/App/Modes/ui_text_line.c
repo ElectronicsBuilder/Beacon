@@ -18,9 +18,10 @@ static void P_Clear(const TextLine *l)
 void TextLine_Redraw(TextLine *l)
 {
   size_t n = strlen(l->text);
-  CHANGE_FONT(l->color);
+  Matrix_SetTextColor((MatrixColor)l->color);
   P_Clear(l);
   l->scrolling = n > (size_t)LINE_CHARS;
+  l->passes = l->scrolling ? 0u : 1u;
   if (l->scrolling)
   {
     l->x = WIDTH;
@@ -33,14 +34,14 @@ void TextLine_Redraw(TextLine *l)
   CHANGE_FONT(BLUE);
 }
 
-void TextLine_Init(TextLine *l, int32_t y, uint8_t color)
+void TextLine_Init(TextLine *l, int32_t y, MatrixColor color)
 {
   memset(l, 0, sizeof *l);
   l->y = y;
   l->color = color;
 }
 
-void TextLine_Set(TextLine *l, const char *text, uint8_t color)
+void TextLine_Set(TextLine *l, const char *text, MatrixColor color)
 {
   if (strncmp(l->text, text, TEXT_LINE_MAX) == 0 && l->color == color)
   {
@@ -60,12 +61,13 @@ void TextLine_Tick(TextLine *l)
   }
   l->ms = 0;
   int32_t len_px = (int32_t)strlen(l->text) * 8;
-  CHANGE_FONT(l->color);
+  Matrix_SetTextColor((MatrixColor)l->color);
   calculateLEDString(l->text, l->x, l->y, Font8x8);
   calculateLEDString(" ", l->x + len_px, l->y, Font8x8);   /* wipe the trailing column */
   CHANGE_FONT(BLUE);
   if (--l->x < -len_px)
   {
     l->x = WIDTH;
+    if (l->passes < 0xFFFFu) l->passes++;
   }
 }

@@ -5,16 +5,20 @@
  */
 #include "mode.h"
 #include "mode_ui.h"
+#include "ui_ticker.h"
 #include "clock.h"
 #include "keys.h"
 #include "log.h"
 #include <stdio.h>
+#include <string.h>
 
 #define CLOCK_POLL_MS 100u
 
 static uint32_t poll_count;
 static int8_t last_second;
 static TextLine sub_line;
+static Ticker ticker;
+static char own_text[20];               /* date line (messages may take turns) */
 
 static void P_Draw(void)
 {
@@ -47,13 +51,15 @@ static void P_Draw(void)
     snprintf(sub, sizeof sub, "PRESS T TO SET");
   }
   ModeUi_DrawBig(big, WHITE);
-  TextLine_Set(&sub_line, sub, MODE_UI_TEXT_COLOR);
+  strcpy(own_text, sub);
+  if (!ticker.showing) TextLine_Set(&sub_line, sub, MODE_UI_TEXT_COLOR);
 }
 
 static void P_Redraw(void)
 {
   last_second = -1;
   TextLine_Init(&sub_line, LAYOUT_BIG_SUB_Y, MODE_UI_TEXT_COLOR);
+  Ticker_Reset(&ticker);
   P_Draw();
 }
 
@@ -75,6 +81,9 @@ static void P_Tick(void)
     TimeEdit_Tick();
     return;
   }
+  MatrixColor color = MODE_UI_TEXT_COLOR;
+  const char *text = Ticker_Tick(&ticker, &sub_line, own_text, &color);
+  TextLine_Set(&sub_line, text, color);
   TextLine_Tick(&sub_line);
   if (++poll_count >= CLOCK_POLL_MS)
   {

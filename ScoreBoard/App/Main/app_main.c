@@ -31,6 +31,7 @@
 #include "mode.h"
 #include "rtc_trim.h"
 #include "countdown.h"
+#include "msg_store.h"
 #include "version.h"
 #include "cmsis_os.h"
 
@@ -146,12 +147,14 @@ void App_Init(void)
 
   /* Display mode (ping-pong, clock, ...), the one saved in the EEPROM */
   Timer_Load();                 // countdown / count-up settings
+  MsgStore_Load();              // message list
   Mode_Init();
 
   /* Console on USART3 */
   CmdSystem_Register();
   CmdGame_Register();
   CmdTimer_Register();
+  CmdMsg_Register();
   Cli_Init();
 }
 

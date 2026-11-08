@@ -41,6 +41,19 @@
 #define LAYOUT_EDIT_Y       20    /* lower band, correct colours */
 #endif
 
+/* Messages: two lines, or one line (single) */
+#if HEIGHT == 64
+#define LAYOUT_MSG_L1_Y      LAYOUT_LINE_Y(1)
+#define LAYOUT_MSG_L2_Y      LAYOUT_LINE_Y(2)
+#define LAYOUT_MSG_SINGLE_Y  28
+#define LAYOUT_MSG_L1_WHITE  0
+#else
+#define LAYOUT_MSG_L1_Y      4     /* upper band */
+#define LAYOUT_MSG_L2_Y      20    /* lower band */
+#define LAYOUT_MSG_SINGLE_Y  20    /* lower band: correct colours */
+#define LAYOUT_MSG_L1_WHITE  1     /* upper band: only white is readable */
+#endif
+
 /* x that centres 'chars' characters of a font 'char_w' pixels wide */
 #define LAYOUT_CENTER_X(chars, char_w)  ((WIDTH - (int32_t)(chars) * (int32_t)(char_w)) / 2)
 

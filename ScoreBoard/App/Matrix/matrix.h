@@ -110,6 +110,17 @@
  void calculateScrollText(char *s, sFONT font, uint8_t textlength, uint8_t y, int32_t *x);
  void updateLEDData(void);
  void CHANGE_FONT(unsigned char FONT);
+
+ /* Named text colours with their real RGB (image .R/.G/.B light the red/green/
+  * blue LEDs). Note the 2016 CHANGE_FONT codes GREEN and BLUE are swapped:
+  * CHANGE_FONT(BLUE) shows green, CHANGE_FONT(GREEN) shows blue. */
+ typedef enum {
+   MTX_C_WHITE, MTX_C_RED, MTX_C_GREEN, MTX_C_BLUE, MTX_C_YELLOW, MTX_C_CYAN, MTX_C_MAGENTA,
+   MTX_C_COUNT
+ } MatrixColor;
+ void Matrix_SetTextColor(MatrixColor c);
+ const char *Matrix_ColorName(MatrixColor c);
+ int Matrix_ColorFind(const char *name);        /* MatrixColor or -1 */
  void UG_DrawBMP(UG_S16 xp, UG_S16 yp, const EZ_BMP *bmp);
 
 

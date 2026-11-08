@@ -27,4 +27,15 @@ ErrorStatus Eeprom24_Init(EE24_ADDR_t slave);
 int16_t Eeprom24_ReadByte(EE24_ADDR_t slave, uint16_t adr);              // 0..255, <0 = error
 int16_t Eeprom24_WriteByte(EE24_ADDR_t slave, uint16_t adr, uint8_t wert); // 0 = ok, <0 = error
 
+#define EE24_PAGE_SIZE 32u        // smallest page of the 24xx32..24xx512 family
+
+// Block access (0 = ok, <0 = error). Write splits at page boundaries, skips
+// pages whose content is already equal, and waits for each write cycle.
+int16_t Eeprom24_Read(EE24_ADDR_t slave, uint16_t adr, void *buf, uint16_t len);
+int16_t Eeprom24_Write(EE24_ADDR_t slave, uint16_t adr, const void *buf, uint16_t len);
+
+// Size in bytes (4 KB .. 64 KB), found at the first boot call by checking at
+// which offset the addresses wrap around (one byte is changed and restored).
+uint32_t Eeprom24_Size(EE24_ADDR_t slave);
+
 #endif // APP_EEPROM_24LC_H

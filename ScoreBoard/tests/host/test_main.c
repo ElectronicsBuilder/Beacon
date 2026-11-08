@@ -10,6 +10,8 @@
 #include "time_entry.h"
 #include "keys.h"
 #include "crc16.h"
+#include "msg_queue.h"
+#include "text_entry.h"
 
 static int failures, checks;
 
@@ -246,6 +248,90 @@ static void test_crc16(void)
   CHECK(Crc16("", 0) == 0xFFFFu);
 }
 
+static MsgQueue q;
+
+static void test_msg_queue(void)
+{
+  MsgQueue_Init(&q, 4);
+  CHECK(MsgQueue_Count(&q) == 0);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_SEQ, 0) == -1);
+
+  CHECK(MsgQueue_Add(&q, "HELLO", NULL, 1) == 0);
+  CHECK(MsgQueue_Add(&q, "LINE ONE", "LINE TWO", 2) == 1);
+  CHECK(MsgQueue_Add(&q, "THIRD", "", 0) == 2);
+  CHECK(MsgQueue_Count(&q) == 3);
+  CHECK(strcmp(q.slots[1].line2, "LINE TWO") == 0 && q.slots[1].color == 2);
+
+  /* invalid text */
+  CHECK(MsgQueue_Add(&q, "", NULL, 0) == -2);
+  CHECK(MsgQueue_Add(&q, "TAB\tX", NULL, 0) == -2);
+  CHECK(MsgQueue_Add(&q, "0123456789012345678901234567890123456789X", NULL, 0) == -2);   /* 41 chars */
+  CHECK(MsgQueue_Add(&q, "0123456789012345678901234567890123456789", NULL, 0) == 3);     /* 40 ok */
+  CHECK(MsgQueue_Add(&q, "FULL", NULL, 0) == -1);
+
+  /* sequential order wraps */
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_SEQ, 0) == 0);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_SEQ, 0) == 1);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_SEQ, 0) == 2);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_SEQ, 0) == 3);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_SEQ, 0) == 0);
+  CHECK(MsgQueue_Prev(&q) == 3);
+
+  /* delete frees the slot; a new message goes there but plays last */
+  CHECK(MsgQueue_Delete(&q, 1) == 0);
+  CHECK(MsgQueue_Delete(&q, 1) != 0);
+  CHECK(MsgQueue_Add(&q, "NEW", NULL, 0) == 1);
+  uint8_t order[MSG_MAX];
+  CHECK(MsgQueue_Sorted(&q, order) == 4);
+  CHECK(order[0] == 0 && order[1] == 2 && order[2] == 3 && order[3] == 1);
+
+  /* random never repeats the current one */
+  int repeats = 0, seen[4] = {0};
+  q.current = 0;
+  for (uint32_t r = 0; r < 200; r++)
+  {
+    int before = q.current;
+    int n = MsgQueue_Next(&q, MSG_ORDER_RANDOM, r * 2654435761u);
+    if (n == before) repeats++;
+    if (n >= 0 && n < 4) seen[n]++;
+  }
+  CHECK(repeats == 0 && seen[0] && seen[1] && seen[2] && seen[3]);
+
+  /* one message: random returns it */
+  MsgQueue_Init(&q, 4);
+  MsgQueue_Add(&q, "ONLY", NULL, 0);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_RANDOM, 7) == 0);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_RANDOM, 9) == 0);
+
+  /* loaded from storage: seq continues after the highest */
+  MsgQueue_Init(&q, 3);
+  q.slots[2].seq = 41; strcpy(q.slots[2].line1, "A");
+  q.slots[0].seq = 7;  strcpy(q.slots[0].line1, "B");
+  MsgQueue_Loaded(&q);
+  CHECK(q.next_seq == 42);
+  CHECK(MsgQueue_Next(&q, MSG_ORDER_SEQ, 0) == 0);    /* seq 7 first */
+  q.next_seq = 0xFF00u;
+  CHECK(MsgQueue_NeedsRenumber(&q));
+  MsgQueue_Renumber(&q);
+  CHECK(q.slots[0].seq == 1 && q.slots[2].seq == 2 && q.next_seq == 3);
+}
+
+static void test_text_entry(void)
+{
+  TextEntry e;
+  TextEntry_Start(&e, "HI", 5);
+  CHECK(e.len == 2);
+  TextEntry_Key(&e, ' '); TextEntry_Key(&e, 'Y'); TextEntry_Key(&e, 'O'); TextEntry_Key(&e, 'U');
+  CHECK(strcmp(e.text, "HI YO") == 0);          /* stops at max */
+  TextEntry_Key(&e, KB_BACK);
+  CHECK(strcmp(e.text, "HI Y") == 0);
+  CHECK(TextEntry_Key(&e, 0x81) == TE_EDITING && strcmp(e.text, "HI Y") == 0);   /* F1 ignored */
+  CHECK(TextEntry_Key(&e, KB_ENTER) == TE_DONE);
+  CHECK(TextEntry_Key(&e, KB_ESC) == TE_CANCEL);
+  for (int i = 0; i < 10; i++) TextEntry_Key(&e, KB_BACK);
+  CHECK(e.len == 0 && e.text[0] == '\0');
+}
+
 int main(void)
 {
   test_clock();
@@ -254,6 +340,8 @@ int main(void)
   test_time_entry();
   test_seconds_and_durations();
   test_crc16();
+  test_msg_queue();
+  test_text_entry();
   printf("%d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;
 }

@@ -33,6 +33,23 @@ int16_t I2C1Bus_WriteByte16(uint8_t slave_adr, uint16_t adr, uint8_t wert)
 }
 
 
+/* 100 kHz: about 0.1 ms per byte, plus the base timeout */
+static uint32_t P_Timeout(uint16_t len)
+{
+  return I2C1_TIMEOUT_MS + len / 4u;
+}
+
+int16_t I2C1Bus_Read16(uint8_t slave_adr, uint16_t adr, uint8_t *buf, uint16_t len)
+{
+  return HAL_I2C_Mem_Read(&hi2c1, slave_adr, adr, I2C_MEMADD_SIZE_16BIT, buf, len, P_Timeout(len)) == HAL_OK ? 0 : -1;
+}
+
+int16_t I2C1Bus_Write16(uint8_t slave_adr, uint16_t adr, const uint8_t *buf, uint16_t len)
+{
+  return HAL_I2C_Mem_Write(&hi2c1, slave_adr, adr, I2C_MEMADD_SIZE_16BIT, (uint8_t *)buf, len,
+                           P_Timeout(len)) == HAL_OK ? 0 : -1;
+}
+
 int16_t I2C1Bus_WaitReady(uint8_t slave_adr, uint32_t timeout_ms)
 {
   /* Poll once per millisecond; a 24LCxx write cycle takes up to 5 ms.

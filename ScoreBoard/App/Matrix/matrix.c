@@ -462,7 +462,7 @@ void CHANGE_FONT(unsigned char FONT)
 	{
 		foreground_color.R=0xff;
 	    foreground_color.G=0x00;
-	    foreground_color.B=0xff;      /* B field drives the green LEDs */
+	    foreground_color.B=0xff;      /* red + blue: shows pink (kept as in 2016) */
 	}
 	else if(FONT == SERVE_COLOR)
 	{
@@ -475,3 +475,35 @@ void CHANGE_FONT(unsigned char FONT)
 
 #endif
 
+
+static const struct { const char *name; uint8_t r, g, b; } named_colors[MTX_C_COUNT] = {
+  [MTX_C_WHITE]   = { "white",   0xff, 0xff, 0xff },
+  [MTX_C_RED]     = { "red",     0xff, 0x00, 0x00 },
+  [MTX_C_GREEN]   = { "green",   0x00, 0xff, 0x00 },
+  [MTX_C_BLUE]    = { "blue",    0x00, 0x00, 0xff },
+  [MTX_C_YELLOW]  = { "yellow",  0xff, 0xff, 0x00 },
+  [MTX_C_CYAN]    = { "cyan",    0x00, 0xff, 0xff },
+  [MTX_C_MAGENTA] = { "magenta", 0xff, 0x00, 0xff },
+};
+
+void Matrix_SetTextColor(MatrixColor c)
+{
+  if (c >= MTX_C_COUNT) c = MTX_C_WHITE;
+  foreground_color.R = named_colors[c].r;
+  foreground_color.G = named_colors[c].g;
+  foreground_color.B = named_colors[c].b;
+}
+
+const char *Matrix_ColorName(MatrixColor c)
+{
+  return (c < MTX_C_COUNT) ? named_colors[c].name : "white";
+}
+
+int Matrix_ColorFind(const char *name)
+{
+  for (int i = 0; i < (int)MTX_C_COUNT; i++)
+  {
+    if (strcmp(name, named_colors[i].name) == 0) return i;
+  }
+  return -1;
+}

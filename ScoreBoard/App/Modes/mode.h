@@ -42,6 +42,7 @@ extern const AppMode mode_pingpong;
 extern const AppMode mode_clock;
 extern const AppMode mode_countdown;
 extern const AppMode mode_countup;
+extern const AppMode mode_messages;
 
 /* 1 while the ping-pong game owns the display (legacy radio/serial input is
  * only used then) */

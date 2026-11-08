@@ -6,20 +6,22 @@
 #define APP_UI_TEXT_LINE_H
 
 #include <stdint.h>
+#include "matrix.h"
 
 #define TEXT_LINE_MAX 96
 
 typedef struct {
   int32_t y;
-  uint8_t color;                    /* CHANGE_FONT colour code */
+  uint8_t color;                    /* MatrixColor */
   char    text[TEXT_LINE_MAX + 1];
   int32_t x;                        /* scroll position */
   uint8_t scrolling;
   uint8_t ms;
+  uint16_t passes;                  /* completed scrolls (or 1 when static) */
 } TextLine;
 
-void TextLine_Init(TextLine *l, int32_t y, uint8_t color);
-void TextLine_Set(TextLine *l, const char *text, uint8_t color);   /* redraws only on change */
+void TextLine_Init(TextLine *l, int32_t y, MatrixColor color);
+void TextLine_Set(TextLine *l, const char *text, MatrixColor color);   /* redraws only on change */
 void TextLine_Redraw(TextLine *l);
 void TextLine_Tick(TextLine *l);                                   /* every 1 ms: scrolling */
 

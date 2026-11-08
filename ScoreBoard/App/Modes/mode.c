@@ -6,6 +6,8 @@
 #include "matrix.h"
 #include "usb_keyboard.h"
 #include "log.h"
+#include "ui_time_edit.h"
+#include "ui_text_edit.h"
 #include <string.h>
 
 /* Append new games/screens at the end (the saved mode is the index). */
@@ -14,6 +16,7 @@ static const AppMode *const modes[] = {
   &mode_clock,
   &mode_countdown,
   &mode_countup,
+  &mode_messages,
 };
 #define MODE_COUNT ((int)(sizeof modes / sizeof modes[0]))
 
@@ -87,6 +90,11 @@ void Mode_Key(uint8_t key)
   if (key >= KB_F1 && key <= KB_F8)
   {
     Mode_Select(key - KB_F1);
+    return;
+  }
+  if (TimeEdit_Active() || TextEdit_Active())   /* typing: + - = _ are text, not brightness */
+  {
+    if (current >= 0) modes[current]->key(key);
     return;
   }
   if (key == '+' || key == '=')

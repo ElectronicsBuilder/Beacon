@@ -11,5 +11,6 @@ mkdir -p "$OUT"
   -I"$APP/Services" -I"$APP/Console" \
   "$HERE/test_main.c" "$APP/Services/clock_calc.c" "$APP/Console/cli_parse.c" \
   "$APP/Services/rtc_trim_calc.c" "$APP/Services/time_entry.c" "$APP/Services/crc16.c" \
+  "$APP/Services/msg_queue.c" "$APP/Services/text_entry.c" \
   -o "$OUT/host_tests"
 "$OUT/host_tests"
