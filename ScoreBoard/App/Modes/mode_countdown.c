@@ -165,6 +165,16 @@ static void P_Draw(void)
     {
       snprintf(text, sizeof text, "STOPPED");
     }
+    uint32_t now;
+    if (countup && cfg.cu_stopped_at == 0u && P_Now(&now) == 0 && cfg.cu_start > now)
+    {
+      ClockTime s;                       /* start still ahead: say when */
+      ClockCalc_FromSeconds(cfg.cu_start, &s);
+      if (cfg.cu_start - now < 86400u)
+        snprintf(text, sizeof text, "STARTS %02u:%02u", s.hour, s.minute);
+      else
+        snprintf(text, sizeof text, "STARTS %04u-%02u-%02u", s.year, s.month, s.day);
+    }
     if (!countup)
     {
       int running = secs > 0u;

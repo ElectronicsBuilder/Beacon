@@ -161,13 +161,33 @@ static void test_time_entry(void)
   /* cursor movement */
   TimeEntry_Start(&e, &t);
   TimeEntry_Key(&e, KB_LEFT);
-  CHECK(e.pos == 0);                             /* cannot go before the start */
+  CHECK(e.pos == 15);                            /* wraps to the end */
+  TimeEntry_Key(&e, KB_RIGHT);
+  CHECK(e.pos == 0);                             /* and back to the start */
   for (int i = 0; i < 4; i++) TimeEntry_Key(&e, KB_RIGHT);
   CHECK(e.pos == 5);                             /* jumped over '-' */
   TimeEntry_Key(&e, KB_BACK);
   CHECK(e.pos == 3);
   type_keys(&e, "8");
   CHECK(strncmp(e.text, "2028", 4) == 0 && e.pos == 5);
+
+  /* Up/Down step the field under the cursor, wrapping in its range */
+  t = (ClockTime){ 2028, 2, 28, 23, 59, 0, 0 };
+  TimeEntry_Start(&e, &t);
+  e.pos = 9;  TimeEntry_Key(&e, KB_UP);          /* day 28 -> 29 (leap year) */
+  CHECK(strncmp(e.text + 8, "29", 2) == 0);
+  TimeEntry_Key(&e, KB_UP);                      /* 29 -> 1 */
+  CHECK(strncmp(e.text + 8, "01", 2) == 0);
+  TimeEntry_Key(&e, KB_DOWN);                    /* 1 -> 29 */
+  CHECK(strncmp(e.text + 8, "29", 2) == 0);
+  e.pos = 15; TimeEntry_Key(&e, KB_UP);          /* minute 59 -> 00 */
+  CHECK(strcmp(e.text + 11, "23:00") == 0);
+  e.pos = 11; TimeEntry_Key(&e, KB_UP);          /* hour 23 -> 00 */
+  CHECK(strcmp(e.text + 11, "00:00") == 0);
+  e.pos = 2;  TimeEntry_Key(&e, KB_DOWN);        /* year 2028 -> 2027 */
+  CHECK(strncmp(e.text, "2027", 4) == 0);
+  e.pos = 5;  TimeEntry_Key(&e, KB_DOWN); TimeEntry_Key(&e, KB_DOWN);   /* month 2 -> 1 -> 12 */
+  CHECK(strncmp(e.text + 5, "12", 2) == 0);
 
   /* invalid date is reported, ESC cancels */
   TimeEntry_Start(&e, &t);

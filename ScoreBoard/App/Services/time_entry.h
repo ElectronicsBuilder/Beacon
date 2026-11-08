@@ -2,8 +2,10 @@
  * time_entry.h - date/time editor for keyboard entry on the display.
  *
  * Text "YYYY-MM-DD HH:MM" (16 characters = 128 px in the 8 px font). Digits
- * overwrite the digit under the cursor and move right; Left/Right/Backspace
- * move the cursor; Enter finishes, ESC cancels. Separators are skipped.
+ * overwrite the digit under the cursor and move right; Up/Down step the field
+ * under the cursor (year, month, day, hour, minute; wrapping in its range);
+ * Left/Right/Backspace move the cursor (wrapping at the ends); Enter
+ * finishes, ESC cancels. Separators are skipped.
  */
 #ifndef APP_TIME_ENTRY_H
 #define APP_TIME_ENTRY_H
