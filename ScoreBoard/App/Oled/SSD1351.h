@@ -67,14 +67,6 @@
 
 #define  RGB_COL_GREY           0xF7DE
 
-#define	BLACK           0x0000
-#define	BLUE            0x001F
-#define	RED             0xF800
-#define	GREEN           0x07E0
-#define CYAN            0x07FF
-#define MAGENTA         0xF81F
-#define YELLOW          0xFFE0
-#define WHITE           0xFFFF
 
 
 //--------------------------------------------------------------
@@ -211,8 +203,6 @@ void OLED_Init(void);
 void OLED_SetCursor2Draw(uint8_t x, uint8_t y);
 void OLED_SetPixel(uint16_t color);
 void OLED_DrawPixel(uint16_t color);   // pixel at the current cursor position
-void OLED_FillScreen(uint16_t color);
-void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint16_t color);
 void OLED_DrawCircle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color);
 void OLED_DrawChar(uint8_t x, uint8_t y, uint8_t ascii, OledFont *font, uint16_t vg, uint16_t bg);
 void OLED_DrawString(uint8_t x, uint8_t y,char *ptr, OledFont *font, uint16_t vg, uint16_t bg);
@@ -225,23 +215,15 @@ uint16_t SSD1351_Color565(uint8_t r, uint8_t g, uint8_t b);
 void SSD1351_fillScreen(uint16_t fillcolor);
 void SSD1351_rawFillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t fillcolor);
 void SSD1351_fillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t fillcolor) ;
-void SSD1351_rawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) ;
-void SSD1351_rawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
-void SSD1351_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
-void SSD1351_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
 void SSD1351_drawPixel(int16_t x, int16_t y, uint16_t color);
 void TFT_INIT(void);
-void TFT_DrawBMP( UG_S16 xp, UG_S16 yp, EZ_BMP* bmp );
+void TFT_DrawBMP( UG_S16 xp, UG_S16 yp, const EZ_BMP *bmp );
 //--------------------------------------------------------------
 
 
 
-void Deactivate_Scroll();
-void Vertical_Scroll(unsigned char a, unsigned char b, unsigned char c);
-void Set_Start_Line(unsigned char d);
 
 
-void VERTICAL_SCROLL_CUSTOM(unsigned char direction, unsigned char step, unsigned char delay, unsigned char num_row );
 
 
 /* Low-level helpers used inside the driver */

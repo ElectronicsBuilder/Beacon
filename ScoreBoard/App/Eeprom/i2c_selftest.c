@@ -25,6 +25,7 @@
 #define TEST_ADDR     0x0FF0u     /* spare byte, inside a 24LC32 (4 KB) */
 #define T_MS          20u
 
+#if APP_I2C_SELFTEST
 static char line[96];
 
 static void P_Print(const char *s)
@@ -169,6 +170,8 @@ static void P_TestOnPins(uint16_t scl, const char *name)
            TEST_ADDR, pattern, w == HAL_OK ? "ok" : "ERR", rd, rd == pattern ? "PASS" : "FAIL", orig);
   P_Print(line);
 }
+
+#endif /* APP_I2C_SELFTEST */
 
 void I2C_SelfTest(void)
 {

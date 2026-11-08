@@ -51,21 +51,5 @@ int I2C_WriteTransfer(uint8_t dev_addr, uint8_t *buffer, int cnt, uint32_t ptr, 
   return (st == HAL_OK) ? OK : ERROR_I2C;
 }
 
-int I2C_ReadTransfer_single(uint8_t dev_addr, uint8_t data, int cnt, uint32_t ptr, uint8_t ptrlen)
-{
-  /* As in the original, the byte is read into a by-value argument (result unused). */
-  (void)cnt;
-  return I2C_ReadTransfer(dev_addr, &data, 1, ptr, ptrlen);
-}
 
-int I2C_WriteTransfer_single(uint8_t dev_addr, uint8_t data, int cnt, uint32_t ptr, uint8_t ptrlen)
-{
-  (void)cnt;
-  return I2C_WriteTransfer(dev_addr, &data, 1, ptr, ptrlen);
-}
 
-int I2C_write2(I2C_TypeDef *I2Cx, uint8_t data)
-{
-  (void)I2Cx;
-  return (HAL_I2C_Master_Transmit(&hi2c1, 0xA0, &data, 1, EE_I2C_TIMEOUT_MS) == HAL_OK) ? OK : ERROR_I2C;
-}

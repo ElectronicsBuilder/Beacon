@@ -2607,11 +2607,7 @@ uint8_t key_function(void)
 	  return akt_key;
 
  }
-  //return 30;
-
- // Led_Off(LED_GREEN);
-
-
+  return 0;   /* no key */
 }
 
 /*

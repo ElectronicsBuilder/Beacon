@@ -13,14 +13,6 @@
 
 #define USART_TX_TIMEOUT_MS 100u
 
-void FLUSH_INBUF(uint16_t BUFFER[])
-{
-  /* Kept as in the original (sizeof a pointer). */
-  for (uint16_t i_flush = 0; i_flush <= sizeof(BUFFER); i_flush++)
-  {
-    BUFFER[i_flush] = 0x00;
-  }
-}
 
 void USART_INIT(USART_TypeDef *USART, uint32_t GPIORX, uint32_t GPIOTX, uint32_t RCC_AHB1Periph_GPIO,
                 uint32_t RCC_APB1Periph_USART, uint32_t BAUDRATE, uint8_t USART_IRQn)
@@ -43,16 +35,6 @@ void USART_putc(USART_TypeDef *USARTx, volatile char c)
   HAL_UART_Transmit(APP_UartHandle(USARTx), &ch, 1, USART_TX_TIMEOUT_MS);
 }
 
-int toint(char str[])
-{
-  int len = strlen(str);
-  int i, num = 0;
-  for (i = 0; i < len; i++)
-  {
-    num = num + ((str[len - (i + 1)] - '0') * pow(10, i));
-  }
-  return num;
-}
 
 char tostring(char str[], int num)
 {

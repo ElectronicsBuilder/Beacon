@@ -13,8 +13,5 @@ void I2C_BusInit(void);
 int  I2C_CheckDevice(uint8_t dev_addr);
 int  I2C_ReadTransfer(uint8_t dev_addr, uint8_t *buffer, int cnt, uint32_t ptr, uint8_t ptrlen);
 int  I2C_WriteTransfer(uint8_t dev_addr, uint8_t *buffer, int cnt, uint32_t ptr, uint8_t ptrlen);
-int  I2C_ReadTransfer_single(uint8_t dev_addr, uint8_t data, int cnt, uint32_t ptr, uint8_t ptrlen);
-int  I2C_WriteTransfer_single(uint8_t dev_addr, uint8_t data, int cnt, uint32_t ptr, uint8_t ptrlen);
-int  I2C_write2(I2C_TypeDef *I2Cx, uint8_t data);
 
 #endif

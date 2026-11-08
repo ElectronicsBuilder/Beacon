@@ -7,7 +7,6 @@
 // Check that the EEPROM answers by reading address 0.
 ErrorStatus Eeprom24_Init(EE24_ADDR_t slave)
 {
-  I2C1Bus_Init();
   return (I2C1Bus_ReadByte16(slave, 0x0000) >= 0) ? SUCCESS : ERROR;
 }
 

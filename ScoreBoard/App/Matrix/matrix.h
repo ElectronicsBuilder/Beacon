@@ -102,19 +102,15 @@
  void APP_DMA2_Stream1_IRQ(void);
  void initLEDdata(void);
  void calculateLEDdata(void);
- void calculateTestLEDData(void);
  void calculateLEDString(char *s, int32_t x, int32_t y, sFONT font);
  void calculateLine(uint32_t x, uint32_t y, uint32_t width, uint32_t height, struct color line_color);
  void calculateRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, struct color frame_color, struct color fill_color);
  void calculateClearImage(void);
- void calculateScrollChar(char s, sFONT font);
  void calculateScrollText(char *s, sFONT font, uint8_t textlength, uint8_t y, int32_t *x);
  void updateLEDData(void);
- void invertForeBackgroundColor(void);
  void CHANGE_FONT(unsigned char FONT);
- void UG_DrawBMP(UG_S16 xp, UG_S16 yp, EZ_BMP *bmp);
+ void UG_DrawBMP(UG_S16 xp, UG_S16 yp, const EZ_BMP *bmp);
 
- void calculatePixel(uint32_t x, uint32_t y,uint16_t color);
 
 
 #endif

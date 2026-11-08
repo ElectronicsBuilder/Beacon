@@ -230,36 +230,6 @@ void calculateLEDdata(void){
         matrix_calc_count++;
 }
 
-void calculateTestLEDData(void){
-        matrix_dirty = 1;
-        uint32_t height,width;
-        static uint32_t offset=0;
-        static uint8_t brightness=0;
-        for(height=0;height<HEIGHT;height++){
-                for(width=0;width<WIDTH;width++){
-                        switch(offset){
-                                default:
-                                case 0:
-                                        image[height][width].R=brightness;
-                                        image[height][width].G=0x0;
-                                        image[height][width].B=0x0;
-                                        break;
-                                case 1:
-                                        image[height][width].R=0x0;
-                                        image[height][width].G=brightness;
-                                        image[height][width].B=0x0;
-                                        break;
-                                case 2:
-                                        image[height][width].R=0x0;
-                                        image[height][width].G=0x0;
-                                        image[height][width].B=brightness;
-                                        break;
-                        }
-                        offset=(offset+1)%3;
-                }
-        }
-        brightness++;
-}
 
 /* Set one pixel; mark the image dirty only if the colour really changes. */
 static inline void P_SetPixel(uint32_t y, uint32_t x, const struct color *c){
@@ -300,15 +270,6 @@ void calculateLine(uint32_t x, uint32_t y, uint32_t width, uint32_t height, stru
 
 
 
-void calculatePixel(uint32_t x, uint32_t y,uint16_t color)
-				{
-					CHANGE_FONT(color);
-
-                        image[y][x].R=foreground_color.R;
-                        image[y][x].G=foreground_color.G;
-                        image[y][x].B=foreground_color.B;
-                        calculateLEDdata();
-                }
 
 
 //EXPERIMENTAL
@@ -321,20 +282,18 @@ void DISPLAY_PIXEL(uint32_t x, uint32_t y)
 
 
 
-void UG_DrawBMP( UG_S16 xp, UG_S16 yp, EZ_BMP* bmp )
+void UG_DrawBMP( UG_S16 xp, UG_S16 yp, const EZ_BMP *bmp )
 {
    UG_S16 x,y,xs;
-   UG_U8 r,g,b;
-   UG_U16* p;
+   const UG_U16* p;
    UG_U16 tmp;
-   UG_COLOR c;
 
    if ( bmp->p == NULL ) return;
 
    /* Only support 16 BPP so far */
    if ( bmp->bpp == BMP_BPP_16 )
    {
-      p = (UG_U16*)bmp->p;
+      p = (const UG_U16*)bmp->p;
    }
    else
    {
@@ -421,17 +380,6 @@ void calculateClearImage(void){
         }
 }
 
-void calculateScrollChar(char s, sFONT font){
-        char str[1];
-        static uint32_t x=WIDTH-8;
-        if(x<1){
-                calculateLEDString(" ",0,0,font);
-                x=WIDTH-8;
-        }
-        str[0]=s;
-        calculateLEDString(str,x,0,font);
-        x--;
-}
 
 void calculateScrollText(char *s, sFONT font, uint8_t textlength, uint8_t y, int32_t *x){
         if((*x)<textlength*-8){
@@ -456,13 +404,6 @@ void updateLEDData(void){
         __HAL_TIM_ENABLE(&htim8);
 }
 
-void invertForeBackgroundColor(void){
-        struct color temp_color;
-
-        temp_color=foreground_color;
-        foreground_color=background_color;
-        background_color=temp_color;
-}
 
 void CHANGE_FONT(unsigned char FONT)
 {

@@ -20,16 +20,10 @@
 //--------------------------------------------------------------
 // Internal functions
 //--------------------------------------------------------------
-void P_SSD1331_InitIO(void);
 void P_SSD1331_CS(BitAction wert);
 void P_SSD1331_DC(BitAction wert);
 void P_SSD1331_RES(BitAction wert);
-void P_SSD1331_InitChip(void);
-void P_SSD1331_CMD(uint8_t wert);
-void P_SSD1331_DATA(uint8_t wert); 
 void P_SSD1331_Delay(volatile uint32_t nCount);
-void P_SSD1331_GetRGB(uint16_t color, uint8_t *r, uint8_t *g, uint8_t *b);
-void P_SSD1331_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint16_t color);
 
 
 //--------------------------------------------------------------
@@ -140,29 +134,12 @@ void OLED_DrawPixel(uint16_t color)
 //--------------------------------------------------------------
 // Fills the screen with one colour
 //--------------------------------------------------------------
-void OLED_FillScreen(uint16_t color)
-{
-  uint8_t y;
-
-  for(y=0;y<LCD_MAXY;y++) {
-    P_SSD1331_DrawLine(0,y,LCD_MAXX-1,y,color);
-  }
-}
 
 
 //--------------------------------------------------------------
 // Draws a line in one colour
 // from x1,y1 to x2,y2
 //--------------------------------------------------------------
-void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint16_t color)
-{
-  if(x1>=LCD_MAXX) x1=LCD_MAXX-1;
-  if(x2>=LCD_MAXX) x2=LCD_MAXX-1;
-  if(y1>=LCD_MAXY) y1=LCD_MAXY-1;
-  if(y2>=LCD_MAXY) y2=LCD_MAXY-1;
-
-  P_SSD1331_DrawLine(x1,y1,x2,y2,color);
-}
 
 
 //--------------------------------------------------------------
@@ -307,14 +284,6 @@ void OLED_DrawString(uint8_t x, uint8_t y,char *ptr, OledFont *font, uint16_t vg
 // Internal function
 // Initialise all display IO pins
 //--------------------------------------------------------------
-void P_SSD1331_InitIO(void)
-{
-  /* The pins are configured by CubeMX (MX_GPIO_Init); set the idle levels. */
-#if USE_SSD1331_RESET==1
-  P_SSD1331_RES(Bit_RESET);
-#endif
-  P_SSD1331_CS(Bit_SET);
-}
 
 
 void P_SSD1351_InitIO(void)
@@ -415,56 +384,6 @@ void writeData(uint8_t wert)
 // Internal function
 // initialises the display controller
 //--------------------------------------------------------------
-void P_SSD1331_InitChip(void)
-{
-  P_SSD1331_RES(Bit_RESET);
-  P_SSD1331_Delay(LCD_INIT_PAUSE);
-  P_SSD1331_RES(Bit_SET);
-  P_SSD1331_Delay(LCD_INIT_PAUSE);
-  P_SSD1331_RES(Bit_RESET);
-  P_SSD1331_Delay(LCD_INIT_PAUSE);
-  P_SSD1331_RES(Bit_SET);
-  P_SSD1331_Delay(LCD_INIT_PAUSE);
-
-  P_SSD1331_CMD(SSD1331_CMD_DISPLAYOFF);
-  P_SSD1331_CMD(SSD1331_CMD_SETREMAP);
-  P_SSD1331_CMD(0x72);
-  P_SSD1331_CMD(SSD1331_CMD_STARTLINE);
-  P_SSD1331_CMD(0x00);
-  P_SSD1331_CMD(SSD1331_CMD_DISPLAYOFFSET);
-  P_SSD1331_CMD(0x00);
-  P_SSD1331_CMD(SSD1331_CMD_NORMALDISPLAY);
-  P_SSD1331_CMD(SSD1331_CMD_SETMULTIPLEX);
-  P_SSD1331_CMD(0x3F);
-  P_SSD1331_CMD(SSD1331_CMD_SETMASTER);
-  P_SSD1331_CMD(0x8E);
-  P_SSD1331_CMD(SSD1331_CMD_POWERMODE);
-  P_SSD1331_CMD(0x0B);
-  P_SSD1331_CMD(SSD1331_CMD_PRECHARGE);
-  P_SSD1331_CMD(0x31);
-  P_SSD1331_CMD(SSD1331_CMD_CLOCKDIV);
-  P_SSD1331_CMD(0xF0);
-  P_SSD1331_CMD(SSD1331_CMD_PRECHARGEA);
-  P_SSD1331_CMD(0x64);
-  P_SSD1331_CMD(SSD1331_CMD_PRECHARGEB);
-  P_SSD1331_CMD(0x78);
-  P_SSD1331_CMD(SSD1331_CMD_PRECHARGEA);
-  P_SSD1331_CMD(0x64);
-  P_SSD1331_CMD(SSD1331_CMD_PRECHARGELEVEL);
-  P_SSD1331_CMD(0x3A);
-  P_SSD1331_CMD(SSD1331_CMD_VCOMH);
-  P_SSD1331_CMD(0x3E);
-  P_SSD1331_CMD(SSD1331_CMD_MASTERCURRENT);
-  P_SSD1331_CMD(0x06);
-  P_SSD1331_CMD(SSD1331_CMD_CONTRASTA);
-  P_SSD1331_CMD(0x91);
-  P_SSD1331_CMD(SSD1331_CMD_CONTRASTB);
-  P_SSD1331_CMD(0x50);
-  P_SSD1331_CMD(SSD1331_CMD_CONTRASTC);
-  P_SSD1331_CMD(0x7D);
-  P_SSD1331_CMD(SSD1331_CMD_DISPLAYON);
-  P_SSD1331_Delay(LCD_INIT_PAUSE);
-}
 
 
 void SSD1351_init(void)
@@ -557,40 +476,12 @@ void SSD1351_init(void)
 // Internal function
 // send a command to the display over SPI
 //--------------------------------------------------------------
-void P_SSD1331_CMD(uint8_t wert)
-{
-  // Kommando
-  P_SSD1331_DC(Bit_RESET);
-
-  // chip select low
-  P_SSD1331_CS(Bit_RESET);
-
-  // send value
-  OledSpi_SendByte(wert);
- 
-  // chip select high
-  P_SSD1331_CS(Bit_SET);
-}
 
 
 //--------------------------------------------------------------
 // Internal function
 // send data to the display over SPI
 //--------------------------------------------------------------
-void P_SSD1331_DATA(uint8_t wert)
-{
-  // Data
-  P_SSD1331_DC(Bit_SET);
-
-  // chip select low
-  P_SSD1331_CS(Bit_RESET);
-
-  // send value
-  OledSpi_SendByte(wert);
-
-  // chip select high
-  P_SSD1331_CS(Bit_SET);
-}
 
 
 //--------------------------------------------------------------
@@ -609,12 +500,6 @@ void P_SSD1331_Delay(volatile uint32_t nCount)
 // Internal function
 // converts a 16-bit colour to R,G,B
 //--------------------------------------------------------------
-void P_SSD1331_GetRGB(uint16_t color, uint8_t *r, uint8_t *g, uint8_t *b)
-{
-  *r=(uint8_t)((color >> 11) << 1);
-  *g=(uint8_t)((color >> 5) & 0x3F);
-  *b=(uint8_t)((color << 1) & 0x3F);
-}
 
 
 //--------------------------------------------------------------
@@ -622,23 +507,6 @@ void P_SSD1331_GetRGB(uint16_t color, uint8_t *r, uint8_t *g, uint8_t *b)
 // Draws a line in one colour
 // from x1,y1 to x2,y2
 //--------------------------------------------------------------
-void P_SSD1331_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint16_t color)
-{
-  uint8_t r,g,b;
-
-  // convert colour
-  P_SSD1331_GetRGB(color, &r,&g,&b);
-
-  // Graphic-Acceleration-Command
-  P_SSD1331_CMD(SSD1331_CMD_LINE);
-  P_SSD1331_CMD(x1);
-  P_SSD1331_CMD(y1);
-  P_SSD1331_CMD(x2);
-  P_SSD1331_CMD(y2);
-  P_SSD1331_CMD(r);
-  P_SSD1331_CMD(g);
-  P_SSD1331_CMD(b);
-}
 
 
 
@@ -757,115 +625,11 @@ void SSD1351_fillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t f
 
 
 // Draw a horizontal line ignoring any screen rotation.
-void SSD1351_rawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
-  // Bounds check
-	uint16_t i;
-  if ((x >= SSD1351WIDTH) || (y >= SSD1351HEIGHT))
-    return;
-
-  // X bounds check
-  if (x+w > SSD1351WIDTH)
-  {
-    w = SSD1351WIDTH - x - 1;
-  }
-
-  if (w < 0) return;
-
-  // set location
-  writeCommand(SSD1351_CMD_SETCOLUMN);
-  writeData(x);
-  writeData(x+w-1);
-  writeCommand(SSD1351_CMD_SETROW);
-  writeData(y);
-  writeData(y);
-  // fill!
-  writeCommand(SSD1351_CMD_WRITERAM);
-
-  for ( i=0; i < w; i++) {
-    writeData(color >> 8);
-    writeData(color);
-  }
-}
 
 // Draw a vertical line ignoring any screen rotation.
-void SSD1351_rawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
-  // Bounds check
-	uint16_t i;
-  if ((x >= SSD1351WIDTH) || (y >= SSD1351HEIGHT))
-  return;
-
-  // X bounds check
-  if (y+h > SSD1351HEIGHT)
-  {
-    h = SSD1351HEIGHT - y - 1;
-  }
-
-  if (h < 0) return;
-
-  // set location
-  writeCommand(SSD1351_CMD_SETCOLUMN);
-  writeData(x);
-  writeData(x);
-  writeCommand(SSD1351_CMD_SETROW);
-  writeData(y);
-  writeData(y+h-1);
-  // fill!
-  writeCommand(SSD1351_CMD_WRITERAM);
-
-  for (i=0; i < h; i++) {
-    writeData(color >> 8);
-    writeData(color);
-  }
-}
 
 
-void SSD1351_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
-  // Transform x and y based on current rotation.
-  switch (getRotation()) {
-  case 0:  // No rotation
-    rawFastVLine(x, y, h, color);
-    break;
-  case 1:  // Rotated 90 degrees clockwise.
-    swap(x, y);
-    x = TFT_WIDTH - x - h;
-    rawFastHLine(x, y, h, color);
-    break;
-  case 2:  // Rotated 180 degrees clockwise.
-    x = TFT_WIDTH - x - 1;
-    y = TFT_HEIGHT - y - h;
-    rawFastVLine(x, y, h, color);
-    break;
-  case 3:  // Rotated 270 degrees clockwise.
-    swap(x, y);
-    y = TFT_HEIGHT - y - 1;
-    rawFastHLine(x, y, h, color);
-    break;
-  }
-}
 
-void SSD1351_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
-  // Transform x and y based on current rotation.
-  switch (getRotation()) {
-  case 0:  // No rotation.
-    rawFastHLine(x, y, w, color);
-    break;
-  case 1:  // Rotated 90 degrees clockwise.
-    swap(x, y);
-    x = TFT_WIDTH - x - 1;
-    rawFastVLine(x, y, w, color);
-    break;
-  case 2:  // Rotated 180 degrees clockwise.
-    x = TFT_WIDTH - x - w;
-    y = TFT_HEIGHT - y - 1;
-    rawFastHLine(x, y, w, color);
-    break;
-  case 3:  // Rotated 270 degrees clockwise.
-    swap(x, y);
-    y = TFT_HEIGHT - y - w;
-    rawFastVLine(x, y, w, color);
-    break;
-  }
-}
 
 void SSD1351_drawPixel(int16_t x, int16_t y, uint16_t color)
 {
@@ -909,44 +673,19 @@ void TFT_INIT(void)
 
 
 
-void TEST_TFT(void)
-{
-	TFT_INIT();
-	//DELAY_MILLI(1000);
 
-	set_rotation(0);
-	uint16_t rot = getRotation();
-	USART_puts(USART3, "ROTATION -> ");
-	DISPLAY_INT2(USART3, rot, 10, 1);
-
-
-	SSD1351_fillRect(0, 0, 128, 128, BLACK);
-
-	SSD1351_fillRect(0, 0, 10, 10, GREEN);
-
-	SSD1351_drawPixel(20, 20, GREEN);
-
-	//OledFont_DrawPString(30, 30, "HE",&FONT_6x8, YELLOW, BLACK);
-	OledFont_DrawString32(50,50,"Ar",&Arial_18x27,RGB_COL_YELLOW,RGB_COL_BLACK);
-	 OledFont_DrawString(80,80,"Ar",&Arial_13x19,RGB_COL_YELLOW,RGB_COL_BLACK);
-	 OledFont_DrawString(40,0,"Ar",&Arial_16x25,RGB_COL_YELLOW,RGB_COL_BLACK);
-	 OledFont_DrawPString32(80,10,"Ti",&pTimes_18,RGB_COL_YELLOW,RGB_COL_BLACK);
-}
-
-void TFT_DrawBMP( UG_S16 xp, UG_S16 yp, EZ_BMP* bmp )
+void TFT_DrawBMP( UG_S16 xp, UG_S16 yp, const EZ_BMP *bmp )
 {
    UG_S16 x,y,xs;
-   UG_U8 r,g,b;
-   UG_U16* p;
+   const UG_U16* p;
    UG_U16 tmp;
-   UG_COLOR c;
 
    if ( bmp->p == NULL ) return;
 
    /* Only support 16 BPP so far */
    if ( bmp->bpp == BMP_BPP_16 )
    {
-      p = (UG_U16*)bmp->p;
+      p = (const UG_U16*)bmp->p;
    }
    else
    {
@@ -982,16 +721,6 @@ void TFT_DrawBMP( UG_S16 xp, UG_S16 yp, EZ_BMP* bmp )
 }
 
 
-void Set_Start_Line(unsigned char d)
-{
-	writeCommand(0xA1);	// Set Vertical Scroll by RAM
-	writeData(d);	// Default => 0x00
-}
-void Set_Display_Offset(unsigned char d)
-{
-	writeCommand(0xA2);	// Set Vertical Scroll by Row
-	writeData(d);	// Default => 0x60
-}
 
 
 
@@ -1003,91 +732,11 @@ void Set_Display_Offset(unsigned char d)
 // b: Set Numbers of Row Scroll per Step
 // c: Set Time Interval between Each Scroll Step
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-void Vertical_Scroll(unsigned char a, unsigned char b, unsigned char c)
-{
-unsigned int i,j;
-// add function to init_delay
-switch(a)
-{
-case 0:
-for(i=0;i<128;i+=b)
-{
-Set_Start_Line(i);
-	//for(j=0;j<c;j++)
-	//{
-		DELAY_MILLI(c);
-	//}
-}
-break;
-case 1:
-for(i=0;i<128;i+=b)
-{
-Set_Start_Line(128-i);
-	//for(j=0;j<c;j++)
-	//{
-		DELAY_MILLI(c);
-	//}
-}
-break;
-}
-Set_Start_Line(0x00);
-}
 
 
 
 
 
-void VERTICAL_SCROLL_CUSTOM(unsigned char direction, unsigned char step, unsigned char delay, unsigned char num_row )
-{
-	uint16_t i, j,k;
-	 k = 0;
-
-	switch (direction)
-	{
-	case UP:
-		for(i = 0; i <= SSD1351WIDTH; i+= step)
-		{
 
 
-			if(k >= num_row)
-			{
-				break;
-					Deactivate_Scroll();
-			}
-			else
-			{
-				Set_Start_Line(i);
-				DELAY_MILLI(delay);
-			}
-
-			k++;
-		}
-		break;
-
-	case DOWN:
-		for(i = 0; i <= SSD1351WIDTH; i+= step)
-		{
-			k++;
-
-			if(k >= num_row)
-			{
-				break;
-			}
-			else
-			{
-				Set_Start_Line(128-i);
-				DELAY_MILLI(delay);
-			}
-
-
-		}
-
-	}
-}
-
-
-void Deactivate_Scroll()
-{
-	writeCommand(0x9E);	// Deactivate Scrolling
-}
 

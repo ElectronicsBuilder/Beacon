@@ -37,24 +37,6 @@ uint16_t RETURN_GAME_SERVER(void)
 	return serv;
 }
 
-GAMERS PORT_GAMER_FROM_ID(uint16_t id)
-{
-
-	GAMER_ALL[0] = GAMER0;
-	GAMER_ALL[1] = GAMER1;
-	GAMER_ALL[2] = GAMER2;
-	GAMER_ALL[3] = GAMER3;
-	GAMER_ALL[4] = GAMER4;
-	GAMER_ALL[5] = GAMER5;
-	GAMER_ALL[6] = GAMER6;
-	GAMER_ALL[7] = GAMER7;
-	GAMER_ALL[8] = GAMER8;
-	GAMER_ALL[9] = GAMER9;
-
-
-
-	return GAMER_ALL[id];
-}
 
 #ifdef SIM_EE_TRANSACTION
 void store_to_eeprom(char *DATA, uint16_t address)
@@ -78,20 +60,6 @@ void read_from_eeprom(char*DATA, uint16_t address)
 
 #endif
 
-GAMERS UPDATE_GAMER_DATA(GAMERS GAMERX, GAMERS GAMERY)
-{
-	/*
-	//memcpy(&GAMERY, &GAMERX, sizeof(GAMERY));
-	GAMERY.id = GAMERX.id;
-	GAMERY.current_score = GAMERX.current_score;
-	GAMERY.score = GAMERX.score;
-	GAMERY.Nserve = GAMERX.Nserve;
-	GAMERY.PD_loc = GAMERX.PD_loc;
-	GAMERY.name = GAMERX.name;
-	GAMERY.message = GAMERX.message;
-	return GAMERY;
-	*/
-}
 
 GAMERS RETURN_SAVE_LOC(uint16_t id, GAMERS GAMERX)
 {
@@ -140,21 +108,7 @@ GAMERS RETURN_SAVE_LOC(uint16_t id, GAMERS GAMERX)
 
 
 
-uint16_t RETURN_SCORE_LOC(uint16_t id)
-{
 
-	uint16_t score_loc = (32*id) + 2560;
-	return score_loc;
-}
-
-GAMERS SAVING_GAMER_DATA(GAMERS GAMERX)
-{
-	store_to_eeprom(GAMERX.name, 0);
-	store_to_eeprom(GAMERX.message, 1);
-	store_to_eeprom(GAMERX.PLAYER_DATA, 2);
-
-	return GAMERX;
-}
 
 GAMERS SAVING_GAMER_DATA2(uint16_t id, GAMERS GAMERX)
 {
@@ -184,203 +138,9 @@ GAMERS SAVING_GAMER_DATA2(uint16_t id, GAMERS GAMERX)
 	return GAMERX;
 }
 
-GAMERS SAVING_GAMER_DATA_INIT(uint16_t id, GAMERS GAMERX)
-{
-#ifdef P_LOOKUP
-	GAMERX = PORT_GAMER_FROM_ID(id);
-#endif
-
-	uint16_t status = CHECK_SAVED();			// NEED TO FIGURE THIS OUT LATER. WHETHER THIS FLAG GOES HIGH WHEN GAMER DATA ARE XFER. IDK. @*f*h
-	//DISPLAY_INT2(USART3, status, 10, 1);
-	if(status == ee_saved)
-	{
-		/* EEPROM already initialised: nothing to write */
-	}
-
-	else
-	{
-		 store_to_eeprom(GAMERX.name, GAMERX.name_loc);
-		 store_to_eeprom(GAMERX.message, GAMERX.message_loc);
-		 store_to_eeprom(GAMERX.PLAYER_DATA, GAMERX.PD_loc);
-		 store_to_eeprom(GAMERX.SAVED_SCORE_DATA, GAMERX.score_data_loc);
 
 
-	}
-	// GAMERY = UPDATE_GAMER_DATA(GAMERY, GAMERX);
 
-	return GAMERX;
-}
-
-GAMERS SAVING_GAMER_DATA_SCORE(uint16_t id, GAMERS GAMERX)
-{
-#ifdef P_LOOKUP
-	GAMERX = PORT_GAMER_FROM_ID(id);
-#endif
-
-	LOG_I("Saving results for %s", GAMERX.name);
-
-	uint16_t status = CHECK_SAVED();			// NEED TO FIGURE THIS OUT LATER. WHETHER THIS FLAG GOES HIGH WHEN GAMER DATA ARE XFER. IDK. @*f*h
-	//DISPLAY_INT2(USART3, status, 10, 1);
-	if(status == ee_saved)
-	{
-		/* EEPROM already initialised: nothing to write */
-	}
-
-	else
-	{
-		// store_to_eeprom(GAMERX.name, GAMERX.name_loc);
-		// store_to_eeprom(GAMERX.message, GAMERX.message_loc);
-		// store_to_eeprom(GAMERX.PLAYER_DATA, GAMERX.PD_loc);
-		 store_to_eeprom(GAMERX.SAVED_SCORE_DATA, GAMERX.score_data_loc);
-
-
-	}
-
-	return GAMERX;
-}
-
-GAMERS text_player_data(GAMERS GAMERX, uint16_t id)
-{
-	//GAMERS GAMERY;
-
-	uint16_t m;
-
-
-#ifdef P_LOOKUP
-	 GAMERX = PORT_GAMER_FROM_ID(id);
-#endif
-
-	if(id == 1)
-	{
-		GAMERX.id = id;
-		//GAMERX.name = "PLAYER A";
-		strcpy(GAMERX.name, "PLAYER A");
-		//GAMERX.message = "BOW DOWN TO THE KING";
-		strcpy(GAMERX.message,"BOW DOWN TO THE KING" );
-	}
-	else if(id == 2)
-	{
-		GAMERX.id = id;
-		//GAMERX.name = " PLAYER E ";
-		strcpy(GAMERX.name, " PLAYER E ");
-		//GAMERX.message = "GREATEST PLAYER EVER";
-		strcpy(GAMERX.message,"PING PONG EXTRAORDINAIRE " );
-	}
-
-	else if(id == 3)
-	{
-		GAMERX.id = id;
-		//GAMERX.name = " PLAYER B ";
-		strcpy(GAMERX.name, "B ZELLE");
-		//GAMERX.message = "SERVING SINCE 1985";
-		strcpy(GAMERX.message,"NETTING SERVES SINCE 2015" );
-
-	}
-
-	else if(id == 4)
-	{
-		GAMERX.id = id;
-		//GAMERX.name = " PLAYER C ";
-		strcpy(GAMERX.name, " PLAYER C ");
-		//GAMERX.message = "ONCE A LOOSER ALWAYS A LOOSER";
-		strcpy(GAMERX.message,"CHAMPION OF THE UNIVERSE" );
-	}
-
-	else if(id == 5)
-	{
-		GAMERX.id = id;
-		strcpy(GAMERX.name, " DEREK ");
-		strcpy(GAMERX.message,"SHAZAM" );
-	}
-
-	else if(id == 6)
-	{
-		GAMERX.id = id;
-		strcpy(GAMERX.name, " SEAN ");
-		strcpy(GAMERX.message,"VINEGAR STROKES" );
-	}
-
-
-	else if(id == 7)
-	{
-		GAMERX.id = id;
-		strcpy(GAMERX.name, "PLAYER1");
-		strcpy(GAMERX.message,"TALK TO HAND 1" );
-	}
-
-
-	else if(id == 8)
-	{
-		GAMERX.id = id;
-		strcpy(GAMERX.name, "PLAYER2");
-		strcpy(GAMERX.message,"TALK TO HAND 2" );
-	}
-
-	else if(id == 0)
-	{
-		GAMERX.id = id;
-		//GAMERX.name = " COMP ";
-		//GAMERX.message = "COMPUTER PLAYER";
-		strcpy(GAMERX.name, " COMP ");
-		strcpy(GAMERX.message,"COMPUTER PLAYER" );
-	}
-
-	else if(id == 9)
-	{
-		GAMERX.id = id;
-		//GAMERX.name = " COMP ";
-		//GAMERX.message = "COMPUTER PLAYER";
-		strcpy(GAMERX.name, "CHARITY");
-		strcpy(GAMERX.message,"TALK TO THE HAND 3" );
-	}
-	else if(id == 10)
-	{
-		GAMERX.id = id;
-		//GAMERX.name = " COMP ";
-		//GAMERX.message = "COMPUTER PLAYER";
-		strcpy(GAMERX.name, " PHIL");
-		strcpy(GAMERX.message,"DUNK MASTER" );
-	}
-
-
-	//GAMERX.ALL_TIME_SC[GAMERX.id][GAMERX.id][0] = 15;
-
-	//DISPLAY_INT2(USART3, GAMER1.ALL_TIME_SC[GAMER1.id][GAMER2.id][0], 10, 1);
-
-	//GAMERX.ALL_TIME_SC[GAMERX.id][GAMERX.id][1] = 6;
-	//DISPLAY_INT2(USART3, GAMER1.ALL_TIME_SC[GAMER1.id][GAMER2.id][1], 10, 1);
-
-
-//	GAMERX.PLAYER_DATA[0] = GAMERX.id;
-//	GAMERX.PLAYER_DATA[1] = 1;
-//	GAMERX.PLAYER_DATA[2] = 2;
-//	GAMERX.PLAYER_DATA[3] = 3;
-
-//	GAMERX.PLAYER_DATA[4] = GAMERX.ALL_TIME_SC[GAMERX.id][GAMERX.id][0];
-//	GAMERX.PLAYER_DATA[5] = GAMERX.ALL_TIME_SC[GAMERX.id][GAMERX.id][1];
-
-	for(m = 0; m < 32; m++)
-	{
-		GAMERX.SAVED_SCORE_DATA[m] = 0;
-	}
-	//strcpy(GAMERX.SAVED_SCORE_DATA, 0);
-
-
-	return GAMERX;
-
-}
-
-void TEST_READ_DATA(uint16_t id)
-{
-	 char temp_tring1[I2C_EEPROM_PAGE]= 	{"Default String"};
-	  read_from_eeprom(temp_tring1, 0);
-	  read_from_eeprom(temp_tring1, 1);
-	  read_from_eeprom(temp_tring1, 2);
-
-	  //USART_puts(USART3, "GAMER NAME -> "); USART_puts(USART3, temp_tring1); eol(USART3);
-	  //USART_puts(USART3, "GAMER MESSAGE -> ");  USART_puts(USART3, temp_tring1); eol(USART3);
-	 // USART_puts(USART3, "GAMER DATA - > "); USART_puts(USART3, temp_tring1); eol(USART3);
-}
 
 GAMERS TEST_READ_DATA2(uint16_t id, GAMERS GAMERX)
 {
@@ -542,49 +302,6 @@ void UPDATE_TEST_GAMER(GAMERS GAMERX, uint16_t id)
 	GAMER_ALL[id] = GAMERX;
 }
 
-void TEST_GAMERS3(uint16_t id)
-{
-
-	if(id == 1)
-	{
-		GAMER2.id = 2;
-
-		GAMER1 = text_player_data(GAMER_ALL[id], id);
-		GAMER1  = RETURN_SAVE_LOC(id, GAMER_ALL[id]);
-		GAMER1  = SAVING_GAMER_DATA2(id, GAMER_ALL[id]);
-		GAMER1 = TEST_READ_DATA2(id, GAMER_ALL[id]);
-	}
-
-	else if(id == 2)
-	{
-		GAMER1.id = 1;
-		GAMER2 = text_player_data(GAMER_ALL[id], id);
-		GAMER2  = RETURN_SAVE_LOC(id, GAMER_ALL[id]);
-		GAMER2  = SAVING_GAMER_DATA2(id, GAMER_ALL[id]);
-		GAMER2 = TEST_READ_DATA2(id, GAMER_ALL[id]);
-	}
-
-	else if(id == 3)
-	{
-		GAMERS PLAY1;
-
-		PLAY1.id = 3;
-		PLAY1 = text_player_data(PLAY1, id);
-		PLAY1  = RETURN_SAVE_LOC(id, PLAY1);
-		PLAY1  = SAVING_GAMER_DATA2(id, PLAY1);
-		PLAY1 = TEST_READ_DATA2(id, PLAY1);
-
-		GAMER_ALL[3] = PLAY1;
-
-
-	}
-
-
-	USART_puts(USART3, "GAMER NAME -> "); USART_puts(USART3, GAMER_ALL[3].name); eol(USART3);
-	USART_puts(USART3, "GAMER MESSAGE -> "); USART_puts(USART3, GAMER_ALL[3].message); eol(USART3);
-	USART_puts(USART3, "GAMER DATA -> "); USART_puts(USART3, GAMER_ALL[3].PLAYER_DATA); eol(USART3);
-
-}
 
 void SHIFT_PLAYERS(GAMERS GAMERX, uint16_t id, CONSOLE_STAT_T x)
 {
@@ -605,10 +322,6 @@ void SHIFT_PLAYERS(GAMERS GAMERX, uint16_t id, CONSOLE_STAT_T x)
 
 }
 
-void TEST_GAMERS(void)
-{
-
-}
 
 void EXTR_PLAYER_DATA(void)
 {
@@ -627,68 +340,13 @@ void EXTR_PLAYER_DATA(void)
 
 }
 
-void DISPLAY_SERVER(uint16_t SERVER)
-{
-	if(SERVER == PLAYER_1)
-	{
-		USART_puts(USART3, PLAYER1.name);
-	}
-
-	if(SERVER == PLAYER_2)
-	{
-		USART_puts(USART3, PLAYER2.name);
-	}
-
-}
-
-void DISPLAY_PLAYER(uint16_t NAME)
-{
-	if(NAME == PLAYER_1)
-	{
-		USART_puts(USART3, PLAYER1.name);
-	}
-
-	if(NAME == PLAYER_2)
-	{
-		USART_puts(USART3, PLAYER2.name);
-	}
-
-}
-
-void CHECK_UPDATE_SCORE(GAMERS GAMERX, GAMERS GAMERY)
-{
-  GAMER_ALL[GAMERX.id] = GAMERX;
-  GAMER_ALL[GAMERY.id] = GAMERY;
-
-  GAMERX  = SAVING_GAMER_DATA2(GAMERX.id, GAMERX);
-
-  GAMERY  = SAVING_GAMER_DATA2(GAMERY.id, GAMERX);
-
-
-  GAMERX = TEST_READ_DATA2(GAMERX.id, GAMERX);
-  GAMERY = TEST_READ_DATA2(GAMERY.id, GAMERY);
-
- // DISPLAY_PLAYER_INFO(GAMER_ALL[GAMERX.id]);
-
-//  DISPLAY_PLAYER_INFO(GAMER_ALL[GAMERY.id]);
 
 
 
-
-
-}
-
-GAMERS SAVE_UPDATE(uint16_t id, GAMERS GAMERT)
-{
-	//GAMERX = text_player_data(GAMERX, id);
-	GAMERT  = RETURN_SAVE_LOC(id, GAMERT);
-	GAMERT  = SAVING_GAMER_DATA_INIT(id, GAMERT);
-	GAMERT = TEST_READ_DATA2(id, GAMERT);
-}
 
 GAMERS UPDATE_RETURN_SCORE(GAMERS GAMERX, GAMERS GAMERY)
 {
-	uint8_t score_track, t_data;
+	uint8_t score_track;
 
 	   score_track = Eeprom24_ReadByte(EE24_ADDR_0, (GAMERX.PD_loc + GAMERY.id));
 	   score_track ++;
@@ -709,9 +367,6 @@ GAMERS UPDATE_RETURN_SCORE(GAMERS GAMERX, GAMERS GAMERY)
 
 void DISPLAY_CURRENT_SCORE(GAMERS GAMERX, GAMERS GAMERY)
 {
-uint16_t m, c_id;
-
-  uint8_t data, data2, score_track2;
 
 
 
@@ -721,7 +376,6 @@ uint16_t m, c_id;
 
 	  Eeprom24_WriteByte(EE24_ADDR_0,(GAMERX.score_data_loc + GAMERY.id), GAMERX.SAVED_SCORE_DATA[GAMERY.id]);
 
-	  data=Eeprom24_ReadByte(EE24_ADDR_0, (GAMERX.score_data_loc + GAMERY.id));
 
   }
 
@@ -731,7 +385,6 @@ uint16_t m, c_id;
 
   	  Eeprom24_WriteByte(EE24_ADDR_0,(GAMERY.score_data_loc + GAMERX.id), GAMERY.SAVED_SCORE_DATA[GAMERX.id]);
 
-  	  data2=Eeprom24_ReadByte(EE24_ADDR_0, (GAMERY.score_data_loc + GAMERX.id));
   }
 
 
@@ -752,11 +405,6 @@ uint16_t m, c_id;
 
 
 
-void SAVE_PLAYER_SCORE(GAMERS GAMERX)
-{
-
-
-}
 
 void RESET_SCORE(void)
 {
@@ -928,70 +576,8 @@ void GAME_TYPE_1(void)
 
 }
 
-void UPDATE_CURRENT_WINNER(void)
-{
 
-		  /* static: GAME.DISPLAY_WINNER keeps pointing at it after we return */
-		  static char winner_text[64];
-		  snprintf(winner_text, sizeof winner_text, "CURRENT WINNER : %s", GAME.WINNER_NAME);
-		  LOG_I("Winner: %s", GAME.WINNER_NAME);
-		  GAME.DISPLAY_WINNER = winner_text;
-		  GAME.TOGGLE_WINNER = 0;
-}
 
-void DISPLAY_SCORE(void)
-{
-	if(GAME.STATUS == stop)
-	{
-		eol(USART3);
-		USART_puts(USART3, "GAME WINNER -> ");
-		DISPLAY_PLAYER(GAME.WINNER);
-		//DISPLAY_INT2(USART3, GAME.WINNER, 10, 0);
 
-		eol(USART3);
-		USART_puts(USART3, "GAME WINNER SERVED -> ");
-		DISPLAY_INT2(USART3, GAME.WINNER_SERVED, 10, 0);
-	}
-}
-
-void INIT_PLAYERS(unsigned char PLAYERS)
-{
-	if(PLAYERS == PLAYER_1)
-	{
-		//PLAYER1.message = PLAYER1.message;
-		//PLAYER1.name = PLAYER1.name;
-		strcpy(PLAYER1.message , PLAYER1.message);
-		strcpy(PLAYER1.name, PLAYER1.name);
-
-		PLAYER1.score = 0;
-		PLAYER1.Nserve = 0;
-	}
-
-	if(PLAYERS == PLAYER_2)
-	{
-		//PLAYER2.message = PLAYER2.message;
-		//PLAYER2.name = PLAYER2.name;
-		strcpy(PLAYER2.message , PLAYER2.message);
-		strcpy(PLAYER2.name, PLAYER2.name);
-
-		PLAYER2.score = 0;
-		PLAYER2.Nserve = 0;
-	}
-
-}
-
-void EE_MAP(void)
-{
-char TEMP_DATA3[I2C_EEPROM_PAGE];
-uint16_t ee_map;
-	for(ee_map = 40; ee_map <= 400; ee_map+=20)
-	{
-
-		read_from_eeprom(TEMP_DATA3, ee_map);
-		USART_puts(USART3, TEMP_DATA3);
-		eol(USART3);
-
-	}
-}
 
 

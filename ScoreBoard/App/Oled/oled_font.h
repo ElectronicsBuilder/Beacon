@@ -93,8 +93,6 @@ void OledFont_DrawChar(uint16_t x, uint16_t y, uint8_t ascii, OledFont *font, ui
 void OledFont_DrawString(uint16_t x, uint16_t y,char *ptr, OledFont *font, uint16_t vg, uint16_t bg);
 void OledFont_DrawChar32(uint16_t x, uint16_t y, uint8_t ascii, OledFont32 *font, uint16_t vg, uint16_t bg);
 void OledFont_DrawString32(uint16_t x, uint16_t y,char *ptr, OledFont32 *font, uint16_t vg, uint16_t bg);
-uint16_t OledFont_DrawPChar(uint16_t x, uint16_t y, uint8_t ascii, OledPFont *font, uint16_t vg, uint16_t bg);
-void OledFont_DrawPString(uint16_t x, uint16_t y,char *ptr, OledPFont *font, uint16_t vg, uint16_t bg);
 uint16_t OledFont_DrawPChar32(uint16_t x, uint16_t y, uint8_t ascii, OledPFont32 *font, uint16_t vg, uint16_t bg);
 void OledFont_DrawPString32(uint16_t x, uint16_t y,char *ptr, OledPFont32 *font, uint16_t vg, uint16_t bg);
 

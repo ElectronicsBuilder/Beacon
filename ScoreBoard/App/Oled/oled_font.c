@@ -225,68 +225,6 @@ void SSD1351_DrawChar(uint8_t x, uint8_t y, uint8_t ascii, OledFont *font, uint1
 }
 */
 
-uint16_t OledFont_DrawPChar(uint16_t x, uint16_t y, uint8_t ascii, OledPFont *font, uint16_t vg, uint16_t bg)
-{
-	SSD1351_DrawChar( x,  y,  ascii,  font,  vg,  bg);
-
-
-	 uint16_t xn,yn,start_maske,maske,width;
-  const uint16_t *wert;
-
-  // limit check
-  if(ascii<font->first_char) return 0;
-  if(ascii>font->last_char) return 0;
-
-  ascii -= font->first_char;
-  wert=&font->table[ascii * (font->height+1)];
-  width=wert[0];
-  uint16_t LCD_DISPLAY_MODE = getRotation();
-  if(LCD_DISPLAY_MODE==PORTRAIT) {
-    start_maske=0x01;
-    start_maske=start_maske<<(width-1);
-
-    for(yn = 0; yn < font->height; yn++) {
-      maske=start_maske;
-      // set cursor
-      OLED_SetCursor2Draw(x,yn+y);
-      for(xn = 0; xn < width; xn++) {
-        if((wert[yn+1] & maske) == 0x00) {
-          // draw pixel in background colour
-        	SSD1351_SetPixel(bg);
-        }
-        else {
-          // draw pixel in foreground colour
-        	SSD1351_SetPixel(vg);
-        }
-        maske=(maske>>1);
-      }
-    }
-  }
-  else {
-    start_maske=0x01;
-    start_maske=start_maske<<(width-1);
-
-    for(yn = 0; yn < font->height; yn++) {
-      maske=start_maske;
-      // set cursor
-      OLED_SetCursor2Draw(x+font->height-yn,y);
-      for(xn = 0; xn < width; xn++) {
-        if((wert[yn+1] & maske) == 0x00) {
-          // draw pixel in background colour
-        	SSD1351_SetPixel(bg);
-        }
-        else {
-          // draw pixel in foreground colour
-        	SSD1351_SetPixel(vg);
-        }
-        maske=(maske>>1);
-      }
-    }
-  }
-
-  return(width);
-
-}
 
 
 //--------------------------------------------------------------
@@ -294,27 +232,6 @@ uint16_t OledFont_DrawPChar(uint16_t x, uint16_t y, uint8_t ascii, OledPFont *fo
 // with foreground and background colour (font max 16 pixels wide)
 // -> pass the font with the & operator
 //--------------------------------------------------------------
-void OledFont_DrawPString(uint16_t x, uint16_t y,char *ptr, OledPFont *font, uint16_t vg, uint16_t bg)
-{
-  uint16_t pos,width;
-  uint16_t LCD_DISPLAY_MODE = getRotation();
-  if(LCD_DISPLAY_MODE==PORTRAIT) {
-    pos=x;
-    while (*ptr != 0) {
-      width=OledFont_DrawPChar(pos,y,*ptr,font,vg,bg);
-      pos+=width;
-      ptr++;
-    }
-  }
-  else {
-    pos=y;
-    while (*ptr != 0) {
-      width=OledFont_DrawPChar(x,pos,*ptr,font,vg,bg);
-      pos+=width;
-      ptr++;
-    }
-  }
-}
 
 
 //--------------------------------------------------------------

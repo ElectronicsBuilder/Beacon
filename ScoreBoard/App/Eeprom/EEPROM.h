@@ -48,18 +48,13 @@ typedef enum EE_I2C
 
 
 
-void GET_PLAYER_DATA(void);
-void SAVE_PLAYER_DATA(void);
 void EE_TEST(void);
 uint16_t  CHECK_SAVED(void);
 void read_from_eeprom(char* myString, uint16_t addr_ptr);
 void store_to_eeprom(char* myString, uint16_t addr_ptr);
 
 
-void store_to_eeprom_single(char myString, uint16_t addr_ptr);
-void read_from_eeprom_single(char myString, uint16_t addr_ptr);
 
-char* EE_TEST2(uint16_t loc) ;
 
 
 

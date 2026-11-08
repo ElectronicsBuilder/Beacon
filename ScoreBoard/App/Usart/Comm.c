@@ -328,10 +328,12 @@ void COMMAND_RECEIVER2(char data)
 {
 
 
+  /* a start character restarts the frame; every byte is stored */
   if(data == '*' || data =='<')
-
+  {
     in_count = 0;
-    inbuf_h[in_count++] = data;
+  }
+  inbuf_h[in_count++] = data;
 
   if(data == '#' || data == '>')
   {
@@ -374,29 +376,13 @@ void COMMAND_RECEIVER2(char data)
 
 }
 
-uint8_t HexToInt(char h)
-    {
-      if ((h >= '0') && (h <= '9'))
-      {
-        return (h - '0');
-      }
-      if ((h >= 'a') && (h <= 'f'))
-      {
-        return ((h - 'a') + 10);
-      }
-      if ((h >= 'A') && (h <= 'F'))
-      {
-        return ((h - 'A') + 10);
-      }
-      return -1;
-    }
 
 void DD_RECEIVER(char* INBUF)
 {
 
   uint16_t LENGTH = strlen(INBUF);
 
-  unsigned char BUFFER[LENGTH];
+  char BUFFER[LENGTH + 1];
 
 
   strlcpy(BUFFER, INBUF, COMM.buffer_size);
