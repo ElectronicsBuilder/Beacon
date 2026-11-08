@@ -7,7 +7,7 @@
 
 uint16_t UPDATE_COUNTER, UPDATE_GO, SCREEN_SLEEP, SCREEN_SLEEP_MIN, SLEEP_STAT;
 
-/* Original timer interrupt bodies, dispatched by APP_TIM_PeriodElapsed() */
+/* Original timer interrupt bodies, run as App-task jobs by AppTimers_Run() */
 void APP_TIM2_Tick(void);   /* RTC clock refresh (1 s)      */
 void APP_TIM3_Tick(void);   /* on-the-fly messages (30 ms)  */
 void APP_TIM4_Tick(void);   /* display update (100 ms)      */

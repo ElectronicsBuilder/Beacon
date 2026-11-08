@@ -59,6 +59,9 @@
 #include "app_timers.h"
 #include "SSD1351.h"
 #include "usb_keyboard.h"
+#include "uart_rx.h"
+#include "settings.h"
+#include "cmsis_os.h"
 #include <string.h>
 #include <strings.h>
 
@@ -2785,6 +2788,7 @@ void App_Init(void) {
 */
 
    EE_TEST();
+   Settings_Load();   /* saved matrix brightness */
    RTC_Configuration();
 
 
@@ -2993,3 +2997,35 @@ It would be super cool if it kept all time record between 2 players (Like player
 */
 
 
+
+
+/*
+ * App task main loop (runs in the FreeRTOS default task after App_Init()).
+ * Every millisecond: handle received serial command bytes, then run the
+ * periodic game/display jobs that used to be timer interrupts.
+ */
+/* Free stack of the App task in bytes (lowest seen), readable over the
+ * debugger while testing. */
+volatile uint32_t app_task_stack_free;
+
+void App_Run(void)
+{
+  uint32_t next = osKernelGetTickCount();
+  uint32_t loops = 0;
+  for (;;)
+  {
+    next += 1u;
+    if ((int32_t)(osKernelGetTickCount() - next) > 10)
+    {
+      next = osKernelGetTickCount();   /* a job ran long: resynchronise */
+    }
+    osDelayUntil(next);
+    UartRx_Poll();
+    AppTimers_Run();
+    Settings_Poll();
+    if (++loops % 1000u == 0u)
+    {
+      app_task_stack_free = osThreadGetStackSpace(osThreadGetId());
+    }
+  }
+}

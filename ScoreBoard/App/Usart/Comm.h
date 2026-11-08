@@ -4,8 +4,8 @@
 
 
 
-void APP_USART3_IRQ(void);   /* debug port RX byte handler */
-void APP_USART2_IRQ(void);   /* radio RX byte handler */
+void APP_USART3_Byte(char data);   /* debug port command byte (App task) */
+void APP_USART2_Byte(char data);   /* radio command byte (App task) */
 
 void DD_RECEIVER(char* INBUF);
 

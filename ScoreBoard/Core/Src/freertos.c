@@ -119,6 +119,7 @@ void StartDefaultTask(void *argument)
   MX_USB_HOST_Init();
   /* USER CODE BEGIN StartDefaultTask */
   App_Init();   /* original scoreboard start-up (App/Main/app_main.c) */
+  App_Run();    /* App task loop: serial commands + game/display jobs, never returns */
   /* Infinite loop */
   for(;;)
   {

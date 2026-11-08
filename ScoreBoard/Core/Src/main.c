@@ -105,11 +105,6 @@ int main(void)
   MX_RTC_Init();
   MX_RNG_Init();
   MX_TIM8_Init();
-  MX_TIM2_Init();
-  MX_TIM3_Init();
-  MX_TIM4_Init();
-  MX_TIM5_Init();
-  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -206,7 +201,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  APP_TIM_PeriodElapsed(htim);   /* scoreboard timers TIM2/3/4/5/7 (Timers/TIM_CTRL.c) */
 
   /* USER CODE END Callback 1 */
 }

@@ -40,14 +40,13 @@ static inline UART_HandleTypeDef *APP_UartHandle(USART_TypeDef *usart)
   return (usart == USART2) ? &huart2 : &huart3;
 }
 
-/* Interrupt bodies of the old firmware, called from the USER CODE sections of
- * Core/Src/stm32f4xx_it.c and HAL_TIM_PeriodElapsedCallback() in main.c. */
-void APP_USART2_IRQ(void);
-void APP_USART3_IRQ(void);
-void APP_DMA2_Stream1_IRQ(void);
-void APP_TIM_PeriodElapsed(TIM_HandleTypeDef *htim);
+/* Interrupt hooks, called from the USER CODE sections of Core/Src/stm32f4xx_it.c */
+void APP_USART2_IRQ(void);          /* Usart/uart_rx.c: store received byte */
+void APP_USART3_IRQ(void);          /* Usart/uart_rx.c: store received byte */
+void APP_DMA2_Stream1_IRQ(void);    /* Matrix/matrix.c: frame-end resync */
 
-/* Old main() body, run from the FreeRTOS default task. */
-void App_Init(void);
+/* Run from the FreeRTOS default task (Core/Src/freertos.c). */
+void App_Init(void);                /* start-up sequence (old main()) */
+void App_Run(void);                 /* App task main loop, never returns */
 
 #endif /* APP_HAL_H */

@@ -23,6 +23,6 @@ typedef enum {
 
 void UsbKbd_Init(void);
 USB_HID_HOST_STATUS_t UsbKbd_Do(void);
-uint8_t UsbKbd_GetKey(void);   // ASCII code of the last key pressed, 0 = none
+uint8_t UsbKbd_GetKey(void);   // next queued key (ASCII), 0 = none
 
 #endif // APP_USB_KEYBOARD_H

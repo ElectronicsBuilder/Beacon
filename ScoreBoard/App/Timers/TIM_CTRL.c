@@ -1,6 +1,7 @@
 
 
 #include "TIM_CTRL.h"
+#include "settings.h"
 #include "Ez_USART.h"
 #include "app_timers.h"
 #include "GAME.h"
@@ -421,11 +422,13 @@ void KEYBOARD_CONTROL(uint8_t data)
 	if(data == '+' || data == '=')
 	{
 		Matrix_SetBrightness(Matrix_GetBrightness() + MATRIX_BRIGHTNESS_STEP);
+		Settings_BrightnessChanged();
 	}
 	if(data == '-' || data == '_')
 	{
 		uint8_t b = Matrix_GetBrightness();
 		Matrix_SetBrightness(b > MATRIX_BRIGHTNESS_STEP ? b - MATRIX_BRIGHTNESS_STEP : MATRIX_BRIGHTNESS_MIN);
+		Settings_BrightnessChanged();
 	}
 	if(data == '@')
 	{
@@ -675,16 +678,3 @@ void RESUME_UPDATE(void)
 }
 
 
-
-/*
- * Called from HAL_TIM_PeriodElapsedCallback() (Core/Src/main.c) for every
- * timer update interrupt. Dispatches to the original timer handlers.
- */
-void APP_TIM_PeriodElapsed(TIM_HandleTypeDef *htim)
-{
-  if      (htim->Instance == TIM2) APP_TIM2_Tick();
-  else if (htim->Instance == TIM3) APP_TIM3_Tick();
-  else if (htim->Instance == TIM4) APP_TIM4_Tick();
-  else if (htim->Instance == TIM5) APP_TIM5_Tick();
-  else if (htim->Instance == TIM7) APP_TIM7_Tick();
-}

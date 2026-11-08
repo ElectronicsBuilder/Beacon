@@ -2,6 +2,13 @@
 
 #include "EEPROM.h"
 #include "Ez_USART.h"
+#include "i2c1_bus.h"
+
+/* Wait (max. 20 ms) until the EEPROM acknowledges again after a write. */
+static void EE_WaitReady(void)
+{
+  (void)I2C1Bus_WaitReady(I2C_EEPROM_ADDR, 20u);
+}
 
 #include "ee_i2c.h"
 
@@ -25,20 +32,20 @@ char SAVED_FLAG[] = { 'S', 'A', 'V', 'E', 'D'};
 void store_to_eeprom(char* myString, uint16_t addr_ptr)
 {
  // printf("Write String: >%s< to EEPROM-Addr[0x%04X]\n", myString, addr_ptr);
-  while (I2C_CheckDevice(I2C_EEPROM_ADDR) != OK);  // wait until EEPROM is ready
+  EE_WaitReady();   // wait until the EEPROM has finished its last write
   I2C_WriteTransfer(I2C_EEPROM_ADDR, myString, strlen(myString)+1, addr_ptr, sizeof(addr_ptr));
 }
 
 void store_to_eeprom_single(char data, uint16_t addr_ptr)
 {
  // printf("Write String: >%s< to EEPROM-Addr[0x%04X]\n", myString, addr_ptr);
-  while (I2C_CheckDevice(I2C_EEPROM_ADDR) != OK);  // wait until EEPROM is ready
+  EE_WaitReady();   // wait until the EEPROM has finished its last write
   I2C_WriteTransfer_single(I2C_EEPROM_ADDR, data, 1, addr_ptr, sizeof(addr_ptr));
 }
 
 void read_from_eeprom(char* myString, uint16_t addr_ptr)
 {
-  while (I2C_CheckDevice(I2C_EEPROM_ADDR) != OK);  // wait until EEPROM is ready
+  EE_WaitReady();   // wait until the EEPROM has finished its last write
   I2C_ReadTransfer(I2C_EEPROM_ADDR, myString, I2C_EEPROM_PAGE, addr_ptr, sizeof(addr_ptr));
 //  printf("Read String: >%s< from  EEPROM-Addr[0x%04X]\n", myString, addr_ptr);
 }
@@ -46,7 +53,7 @@ void read_from_eeprom(char* myString, uint16_t addr_ptr)
 void read_from_eeprom_single(char data, uint16_t addr_ptr)
 {
 
-  while (I2C_CheckDevice(I2C_EEPROM_ADDR) != OK);  // wait until EEPROM is ready
+  EE_WaitReady();   // wait until the EEPROM has finished its last write
   I2C_ReadTransfer_single(I2C_EEPROM_ADDR, data, 1, addr_ptr, sizeof(addr_ptr));
 //  printf("Read String: >%s< from  EEPROM-Addr[0x%04X]\n", myString, addr_ptr);
 }

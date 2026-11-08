@@ -227,13 +227,11 @@ void COMMAND_PROCESS(char*DATA)
 
 
 
-/* Radio (HM-TRP) byte handler - called from USART2_IRQHandler (stm32f4xx_it.c) */
-void APP_USART2_IRQ(void)
+/* Radio (HM-TRP) byte handler. Runs in the App task; bytes come from the
+ * USART2 receive ring buffer (Usart/uart_rx.c). */
+void APP_USART2_Byte(char data)
 {
-
-   if (USART2->SR & USART_SR_RXNE)
        {
-	   	   char data = USART2->DR;
 
 	         if(data == '/')
 	         {
@@ -388,13 +386,11 @@ void APP_USART2_IRQ(void)
 }
 
 
-/* Debug port byte handler - called from USART3_IRQHandler (stm32f4xx_it.c) */
-void APP_USART3_IRQ(void)
+/* Debug port (USART3) byte handler. Runs in the App task; bytes come from the
+ * USART3 receive ring buffer (Usart/uart_rx.c). */
+void APP_USART3_Byte(char data)
 {
-   if (USART3->SR & USART_SR_RXNE)
        {
-
-	   char data = USART3->DR; // the character from the USART1 data register is saved in t
        //USART_putc(USART3, data);
 
          if(data == '/')

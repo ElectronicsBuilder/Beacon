@@ -4,7 +4,7 @@
 //
 // MX_USB_HOST_Init() (called by CubeMX in the default task) starts the host
 // stack, which runs in its own FreeRTOS thread. Key reports arrive through
-// USBH_HID_EventCallback(); the last ASCII key is kept until it is read.
+// USBH_HID_EventCallback() and are queued until the App task reads them.
 //--------------------------------------------------------------
 #include "usb_keyboard.h"
 #include "usb_host.h"
@@ -13,12 +13,17 @@
 extern USBH_HandleTypeDef hUsbHostHS;
 extern ApplicationTypeDef Appli_state;
 
-static volatile uint8_t usb_last_key = 0;
+/* Key queue: written by the USB host task, read by the App task (single
+ * producer / single consumer, no lock needed). */
+#define KEY_QUEUE_SIZE 16u
+static uint8_t key_queue[KEY_QUEUE_SIZE];
+static volatile uint8_t key_head;   /* written by the USB task */
+static volatile uint8_t key_tail;   /* written by the App task */
 
 void UsbKbd_Init(void)
 {
   /* The host stack is started by MX_USB_HOST_Init(). */
-  usb_last_key = 0;
+  key_tail = key_head;
 }
 
 USB_HID_HOST_STATUS_t UsbKbd_Do(void)
@@ -41,8 +46,12 @@ USB_HID_HOST_STATUS_t UsbKbd_Do(void)
 
 uint8_t UsbKbd_GetKey(void)
 {
-  uint8_t key = usb_last_key;
-  usb_last_key = 0;
+  if (key_tail == key_head)
+  {
+    return 0;
+  }
+  uint8_t key = key_queue[key_tail];
+  key_tail = (uint8_t)((key_tail + 1u) % KEY_QUEUE_SIZE);
   return key;
 }
 
@@ -55,9 +64,11 @@ void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
     if (info != NULL)
     {
       uint8_t key = USBH_HID_GetASCIICode(info);
-      if (key != 0U)
+      uint8_t next = (uint8_t)((key_head + 1u) % KEY_QUEUE_SIZE);
+      if (key != 0U && next != key_tail)   /* drop the key if the queue is full */
       {
-        usb_last_key = key;
+        key_queue[key_head] = key;
+        key_head = next;
       }
     }
   }

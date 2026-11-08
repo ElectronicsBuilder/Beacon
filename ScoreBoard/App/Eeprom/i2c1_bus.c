@@ -4,6 +4,7 @@
 //--------------------------------------------------------------
 #include "i2c1_bus.h"
 #include "delay.h"
+#include "cmsis_os.h"
 
 #define I2C1_TIMEOUT_MS 10u
 
@@ -74,12 +75,13 @@ void I2C1Bus_Delay(volatile uint32_t nCount)
 
 int16_t I2C1Bus_WaitReady(uint8_t slave_adr, uint32_t timeout_ms)
 {
-  /* Poll every 250 us; a 24LCxx write cycle takes up to 5 ms. */
-  for (uint32_t t = 0; t < timeout_ms * 4u; t++)
+  /* Poll once per millisecond; a 24LCxx write cycle takes up to 5 ms.
+   * osDelay lets the USB task run meanwhile. */
+  for (uint32_t t = 0; t <= timeout_ms; t++)
   {
     if (HAL_I2C_IsDeviceReady(&hi2c1, slave_adr, 1, 2) == HAL_OK)
       return 0;
-    DELY_MICRO(250);
+    osDelay(1);
   }
   return -1;
 }

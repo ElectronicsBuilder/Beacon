@@ -1,10 +1,11 @@
 /*
  * delay.c - blocking delays of the original firmware.
- * Milliseconds use HAL_Delay (TIM6 time base). Microseconds use the DWT cycle
- * counter instead of the old calibrated busy loop.
+ * Milliseconds use osDelay in the App task (HAL_Delay before the scheduler runs).
+ * Microseconds use the DWT cycle counter instead of the old calibrated loop.
  */
 #include "app_hal.h"
 #include "delay.h"
+#include "cmsis_os.h"
 
 void DELAY_INIT(void)
 {
@@ -24,17 +25,12 @@ void DELY_MICRO(uint32_t micros)
 
 void DELAY_MILLI(uint32_t millis)
 {
-  if (__get_IPSR() != 0u)
+  if (osKernelGetState() == osKernelRunning && __get_IPSR() == 0u)
   {
-    /* Called from an interrupt (the old timer ISRs draw on the displays):
-     * the HAL tick (TIM6) cannot advance here, so busy-wait instead. */
-    while (millis--)
-    {
-      DELY_MICRO(1000u);
-    }
+    osDelay(millis);          /* App task: let the other tasks (USB) run */
   }
   else
   {
-    HAL_Delay(millis);
+    HAL_Delay(millis);        /* before the scheduler starts */
   }
 }
