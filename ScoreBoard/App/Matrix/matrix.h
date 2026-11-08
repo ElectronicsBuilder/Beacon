@@ -103,6 +103,7 @@
  void initLEDdata(void);
  void calculateLEDdata(void);
  void calculateLEDString(char *s, int32_t x, int32_t y, sFONT font);
+ void calculateLEDStringScaled(const char *s, int32_t x, int32_t y, sFONT font, uint8_t scale);
  void calculateLine(uint32_t x, uint32_t y, uint32_t width, uint32_t height, struct color line_color);
  void calculateRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, struct color frame_color, struct color fill_color);
  void calculateClearImage(void);

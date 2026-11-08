@@ -261,6 +261,29 @@ void calculateLEDString(char *s, int32_t x, int32_t y, sFONT font){
         }
 }
 
+/* Like calculateLEDString(), with every font pixel drawn as a scale x scale block
+ * (e.g. Font8x8 at scale 2 = 16x16 characters). Clipped to the image. */
+void calculateLEDStringScaled(const char *s, int32_t x, int32_t y, sFONT font, uint8_t scale){
+        for (; *s; s++, x += (int32_t)font.Width * scale) {
+                if (*s < 32 || *s > 126) continue;
+                for (int32_t i = 0; i < (int32_t)font.Height; i++) {
+                        uint16_t bits = font.table[(*s - 32) * font.Height + i];
+                        for (int32_t j = 0; j < (int32_t)font.Width; j++) {
+                                const struct color *c = ((bits >> j) & 1u) ? &foreground_color : &background_color;
+                                int32_t px = x + ((int32_t)font.Width - 1 - j) * scale;
+                                int32_t py = y + i * scale;
+                                for (int32_t dy = 0; dy < scale; dy++) {
+                                        for (int32_t dx = 0; dx < scale; dx++) {
+                                                if (px + dx >= 0 && px + dx < WIDTH && py + dy >= 0 && py + dy < HEIGHT) {
+                                                        P_SetPixel((uint32_t)(py + dy), (uint32_t)(px + dx), c);
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
 void calculateLine(uint32_t x, uint32_t y, uint32_t width, uint32_t height, struct color line_color){
         matrix_dirty = 1;
         for(;x<width;x++){

@@ -45,8 +45,13 @@ static void P_Draw(void)
   }
 
   CHANGE_FONT(WHITE);          /* white reads the same on both panel halves */
-  calculateLEDString(big, LAYOUT_CENTER_X(strlen(big), 16), LAYOUT_BIG_Y, Font16x24);
+  calculateLEDStringScaled(big, LAYOUT_CENTER_X(strlen(big), LAYOUT_BIG_CHAR_W), LAYOUT_BIG_Y,
+                           LAYOUT_BIG_FONT, LAYOUT_BIG_SCALE);
+#if HEIGHT == 64
   CHANGE_FONT(BLUE);
+#else
+  CHANGE_FONT(WHITE);          /* upper band: only white is readable with the B1/G1 fault */
+#endif
   calculateLEDString("                ", 0, LAYOUT_BIG_SUB_Y, Font8x8);
   calculateLEDString(sub, LAYOUT_CENTER_X(strlen(sub), 8), LAYOUT_BIG_SUB_Y, Font8x8);
 }
