@@ -484,6 +484,7 @@ static const struct { const char *name; uint8_t r, g, b; } named_colors[MTX_C_CO
   [MTX_C_YELLOW]  = { "yellow",  0xff, 0xff, 0x00 },
   [MTX_C_CYAN]    = { "cyan",    0x00, 0xff, 0xff },
   [MTX_C_MAGENTA] = { "magenta", 0xff, 0x00, 0xff },
+  [MTX_C_BLACK]   = { "black",   0x00, 0x00, 0x00 },
 };
 
 void Matrix_SetTextColor(MatrixColor c)
@@ -492,6 +493,14 @@ void Matrix_SetTextColor(MatrixColor c)
   foreground_color.R = named_colors[c].r;
   foreground_color.G = named_colors[c].g;
   foreground_color.B = named_colors[c].b;
+}
+
+void Matrix_SetBackColor(MatrixColor c)
+{
+  if (c >= MTX_C_COUNT) c = MTX_C_BLACK;
+  background_color.R = named_colors[c].r ? MATRIX_BG_LEVEL : 0u;
+  background_color.G = named_colors[c].g ? MATRIX_BG_LEVEL : 0u;
+  background_color.B = named_colors[c].b ? MATRIX_BG_LEVEL : 0u;
 }
 
 const char *Matrix_ColorName(MatrixColor c)

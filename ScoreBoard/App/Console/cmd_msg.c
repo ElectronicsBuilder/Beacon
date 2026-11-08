@@ -76,6 +76,7 @@ static int P_Msg(int argc, char **argv)
     for (int i = 3; i < argc; i++)
     {
       int found = Matrix_ColorFind(argv[i]);
+      if (found == MTX_C_BLACK) return Cli_Error("black text would not show");
       if (i == argc - 1 && found >= 0) color = found;     /* last word may be a colour */
       else if (i == 3) line2 = argv[i];
       else return Cli_Error("unknown colour '%s'", argv[i]);

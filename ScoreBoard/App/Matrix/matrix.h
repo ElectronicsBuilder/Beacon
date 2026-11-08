@@ -116,9 +116,14 @@
   * CHANGE_FONT(BLUE) shows green, CHANGE_FONT(GREEN) shows blue. */
  typedef enum {
    MTX_C_WHITE, MTX_C_RED, MTX_C_GREEN, MTX_C_BLUE, MTX_C_YELLOW, MTX_C_CYAN, MTX_C_MAGENTA,
+   MTX_C_BLACK,
    MTX_C_COUNT
  } MatrixColor;
  void Matrix_SetTextColor(MatrixColor c);
+ /* Background behind text (black = off); colours at MATRIX_BG_LEVEL so text
+  * stays readable on them. Reset to black after drawing. */
+ #define MATRIX_BG_LEVEL 0x60
+ void Matrix_SetBackColor(MatrixColor c);
  const char *Matrix_ColorName(MatrixColor c);
  int Matrix_ColorFind(const char *name);        /* MatrixColor or -1 */
  void UG_DrawBMP(UG_S16 xp, UG_S16 yp, const EZ_BMP *bmp);
