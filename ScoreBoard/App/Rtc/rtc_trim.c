@@ -23,10 +23,21 @@ static uint32_t P_TimerClock(void)
   return ((RCC->CFGR & RCC_CFGR_PPRE1) == RCC_CFGR_PPRE1_DIV1) ? pclk1 : 2u * pclk1;
 }
 
-/* Timer cycles during TRIM_LSI_PERIODS LSI periods; 0 = failed */
-static uint32_t P_Measure(void)
+/* Last measurement, for the log and for reading with the debugger */
+typedef enum { M_OK, M_TIMEOUT, M_OVERCAPTURE, M_RANGE } MeasureResult;
+static const char *const result_text[] = { "ok", "no LSI capture (timeout)", "capture missed", "frequency out of range" };
+volatile struct {
+  uint32_t result;       /* MeasureResult */
+  uint32_t captures;     /* captures taken before the result */
+  uint32_t counts;       /* timer cycles over TRIM_LSI_PERIODS */
+  uint32_t timer_hz;
+} rtc_trim_diag;
+
+/* Timer cycles during TRIM_LSI_PERIODS LSI periods into *counts */
+static MeasureResult P_Measure(uint32_t *counts)
 {
-  uint32_t first = 0, last = 0, ok = 0;
+  uint32_t first = 0, last = 0, n;
+  MeasureResult r = M_OK;
 
   __HAL_RCC_TIM5_CLK_ENABLE();
   TIM5->CR1 = 0;
@@ -40,25 +51,30 @@ static uint32_t P_Measure(void)
   TIM5->SR = 0;
   TIM5->CR1 = TIM_CR1_CEN;
 
-  for (uint32_t n = 0; n <= TRIM_CAPTURES; n++)
+  osKernelLock();                                    /* no task switch for ~16 ms */
+  for (n = 0; n <= TRIM_CAPTURES; n++)
   {
     uint32_t t0 = HAL_GetTick();
     while ((TIM5->SR & TIM_SR_CC4IF) == 0u)
     {
-      if (HAL_GetTick() - t0 > TRIM_TIMEOUT_MS) goto done;
+      if (HAL_GetTick() - t0 > TRIM_TIMEOUT_MS) { r = M_TIMEOUT; break; }
     }
-    if (TIM5->SR & TIM_SR_CC4OF) goto done;          /* a capture was missed (task preempted) */
+    if (r != M_OK) break;
+    if (TIM5->SR & TIM_SR_CC4OF) { r = M_OVERCAPTURE; break; }
     uint32_t c = TIM5->CCR4;                         /* reading clears CC4IF */
     if (n == 0u) first = c;
     last = c;
   }
-  ok = 1;
+  osKernelUnlock();
 
-done:
   TIM5->CR1 = 0;
   TIM5->CCER = 0;
   __HAL_RCC_TIM5_CLK_DISABLE();
-  return ok ? (last - first) : 0u;
+  *counts = last - first;
+  rtc_trim_diag.result = r;
+  rtc_trim_diag.captures = n;
+  rtc_trim_diag.counts = *counts;
+  return r;
 }
 
 /* Write the RTC prescaler in init mode. HAL_RTC_Init() cannot be used: it skips
@@ -96,18 +112,25 @@ done:
 static void P_Trim(void)
 {
   RtcTrim t;
-  int ok = -1;
-  for (int i = 0; i < TRIM_TRIES && ok != 0; i++)
+  MeasureResult r = M_TIMEOUT;
+  uint32_t timer_hz = P_TimerClock();
+  rtc_trim_diag.timer_hz = timer_hz;
+  for (int i = 0; i < TRIM_TRIES && r != M_OK; i++)
   {
-    uint32_t counts = P_Measure();
-    if (counts != 0u)
+    uint32_t counts;
+    r = P_Measure(&counts);
+    if (r == M_OK &&
+        RtcTrim_Calc(timer_hz, TRIM_LSI_PERIODS, counts, trimmed ? trim.prediv_s : 0u, &t) != 0)
     {
-      ok = RtcTrim_Calc(P_TimerClock(), TRIM_LSI_PERIODS, counts, trimmed ? trim.prediv_s : 0u, &t);
+      r = M_RANGE;
+      rtc_trim_diag.result = r;
     }
   }
-  if (ok != 0)
+  if (r != M_OK)
   {
-    LOG_W("RTC trim: LSI measurement failed");
+    LOG_W("RTC trim failed: %s (captures %lu, cycles %lu, timer %lu Hz)", result_text[r],
+          (unsigned long)rtc_trim_diag.captures, (unsigned long)rtc_trim_diag.counts,
+          (unsigned long)timer_hz);
     return;
   }
 
