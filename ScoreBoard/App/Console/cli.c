@@ -5,6 +5,7 @@
 #include "Ez_USART.h"
 #include "Comm.h"
 #include "cli_parse.h"
+#include "mode.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,6 +27,7 @@ static InputMode input_mode = IN_LINE;
 static int machine;                    /* 1 = no echo / prompt */
 static int esc_state;                  /* 0, 1 = ESC seen, 2 = ESC [ seen */
 static char prev_char;
+static int frame_for_game;             /* legacy frame goes to the ping-pong game */
 static char error_text[96];
 static int executing;                  /* a command is running: no prompt redraw */
 
@@ -192,23 +194,27 @@ void Cli_Input(char c)
       P_Write("\r\n[console]\r\n");
       P_Prompt();
     }
+    else if (PingPong_IsActive())
+    {
+      APP_USART3_Byte(c);      /* 2016 serial keys */
+    }
     else
     {
-      APP_USART3_Byte(c);
+      Mode_Key((uint8_t)c);    /* keys for the current mode */
     }
     return;
   }
 
-  /* Legacy frame: forward until the end character */
+  /* Legacy frame: forward until the end character (ping-pong mode only) */
   if (input_mode == IN_FRAME)
   {
-    COMMAND_RECEIVER2(c);
+    if (frame_for_game) COMMAND_RECEIVER2(c);
     if (!machine && c != '\r' && c != '\n') USART_putc(USART3, c);
     if (c == '#' || c == '>')
     {
       input_mode = IN_LINE;
       if (!machine) P_Write("\r\n");
-      Cli_Printf("OK");
+      Cli_Printf(frame_for_game ? "OK" : "ERR ping-pong mode not active");
       P_Prompt();
     }
     return;
@@ -264,7 +270,8 @@ void Cli_Input(char c)
       if ((c == '*' || c == '<') && line_len == 0)   /* legacy frame starts */
       {
         input_mode = IN_FRAME;
-        COMMAND_RECEIVER2(c);
+        frame_for_game = PingPong_IsActive();
+        if (frame_for_game) COMMAND_RECEIVER2(c);
         if (!machine) USART_putc(USART3, c);
       }
       else if (c >= 0x20 && c < 0x7F && line_len < CLI_LINE_MAX - 1u)

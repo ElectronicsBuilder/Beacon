@@ -5,10 +5,11 @@
  *  - INIT_TIMER_CONFIG() starts a job and runs it once right away (SPL's
  *    TIM_TimeBaseInit generated an update event), then every period.
  *  - STOP_TIMER() stops further runs, but a first run that is still pending is
- *    executed once. The LED matrix refresh relies on this: the keyboard job
- *    (TIM7) restarts and immediately stops the refresh job (TIM5) every 4 ms.
- * All jobs run in the App task, one after the other, so they never interrupt
- * each other (as the equal-priority interrupts did before).
+ *    executed once.
+ * The jobs belong to the ping-pong mode: AppTimers_Run() is called by
+ * mode_pingpong.c only while that mode is active. They run one after the
+ * other, so they never interrupt each other (as the equal-priority interrupts
+ * did before).
  */
 #include "app_timers.h"
 #include "TIM_CTRL.h"
@@ -28,8 +29,6 @@ static AppJob jobs[] = {
   { TIM2, APP_TIM2_Tick, 0, 0, 1000u, 0 },
   { TIM3, APP_TIM3_Tick, 0, 0,   30u, 0 },
   { TIM4, APP_TIM4_Tick, 0, 0,  100u, 0 },
-  { TIM5, APP_TIM5_Tick, 0, 0,    1u, 0 },
-  { TIM7, APP_TIM7_Tick, 0, 0,    1u, 0 },
 };
 #define JOB_COUNT (sizeof(jobs) / sizeof(jobs[0]))
 

@@ -67,6 +67,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     App/Gpio
     App/Usb
     App/Game
+    App/Modes
 )
 
 # Add project symbols (macros)

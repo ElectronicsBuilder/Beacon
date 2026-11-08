@@ -5,6 +5,7 @@
 #include "Comm.h"
 #include "TIM_CTRL.h"
 #include "matrix.h"
+#include "layout.h"
 #include "GAME.h"
 
 #include "Ez_USART.h"
@@ -426,18 +427,18 @@ void DD_RECEIVER(char* INBUF)
 
       PLAYER1.name = content2;
       CHANGE_FONT(GREEN);
-      calculateLEDString( PLAYER1.name, 0, 8, Font8x8);
+      calculateLEDString( PLAYER1.name, 0, LAYOUT_LINE_Y(1), Font8x8);
       CHANGE_FONT(BLUE);
       */
 	//  eol(USART3);
 	//  USART_puts(USART3, "PLAYER1 NAME -> ");
 	  //PLAYER1.name_M = PLAYER1.name;
-	 strcpy(PLAYER1.name, COMM.DATA);
+	 strlcpy(PLAYER1.name, COMM.DATA, sizeof PLAYER1.name);
 	 LOG_I("Player 1 name: %s", PLAYER1.name);
 	 // USART_puts(USART3, PLAYER1.name);
 	//  eol(USART3);
 	  	  	CHANGE_FONT(GREEN);
-	        calculateLEDString( PLAYER1.name, 0, 8, Font8x8);
+	        calculateLEDString( PLAYER1.name, 0, LAYOUT_LINE_Y(1), Font8x8);
 	        CHANGE_FONT(BLUE);
 
 
@@ -450,19 +451,19 @@ void DD_RECEIVER(char* INBUF)
   	    GAME.initial_players_name = 0;
   	    PLAYER2.name = content2;
   	    CHANGE_FONT(RED);
-  	    calculateLEDString(PLAYER2.name, 72, 8, Font8x8);
+  	    calculateLEDString(PLAYER2.name, 72, LAYOUT_LINE_Y(1), Font8x8);
   	    CHANGE_FONT(BLUE);
   	    */
 
   	  //eol(USART3);
   	 // USART_puts(USART3, "PLAYER2 NAME -> ");
-      PLAYER2.name_M = PLAYER2.name;
-  	  PLAYER2.name_M = COMM.DATA;
+      strlcpy(PLAYER2.name, COMM.DATA, sizeof PLAYER2.name);   /* was a pointer to a stack buffer */
+      LOG_I("Player 2 name: %s", PLAYER2.name);
   	//  USART_puts(USART3, PLAYER2.name);
   	//  eol(USART3);
 
   			CHANGE_FONT(RED);
-  	  	    calculateLEDString(PLAYER2.name, 72, 8, Font8x8);
+  	  	    calculateLEDString(PLAYER2.name, 72, LAYOUT_LINE_Y(1), Font8x8);
   	  	    CHANGE_FONT(BLUE);
 
     }

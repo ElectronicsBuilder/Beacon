@@ -28,6 +28,7 @@
 #include "log.h"
 #include "cli.h"
 #include "commands.h"
+#include "mode.h"
 #include "version.h"
 #include "cmsis_os.h"
 
@@ -45,36 +46,9 @@ char number3[50];
 char number4[50];
 char number5[50];
 char number6[50];
-uint8_t USB_KEYBOARD;
-USB_HID_HOST_STATUS_t host_status;
-uint16_t timer_count;
-
 /* Free stack of the App task in bytes (lowest seen), readable over the
  * debugger while testing. */
 volatile uint32_t app_task_stack_free;
-
-/* Poll the USB keyboard: returns the next key (ASCII), 0 = none,
- * 10 = device not supported, 20 = no keyboard connected. */
-uint16_t POLL_USB(void)
-{
-  host_status = UsbKbd_Do();
-
-  if (host_status == USB_HID_KEYBOARD_CONNECTED)
-  {
-    USB_KEYBOARD = key_function();
-    return USB_KEYBOARD;
-  }
-  else if (host_status == USB_HID_DEV_NOT_SUPPORTED)
-  {
-    return 10;
-  }
-  return 20;
-}
-
-uint8_t key_function(void)
-{
-  return UsbKbd_GetKey();   /* 0 = no key */
-}
 
 /*
  * Start-up sequence of the original firmware (was main()).
@@ -167,13 +141,8 @@ void App_Init(void)
   calculateLEDdata();
   CHANGE_FONT(BLUE);
 
-  /* Periodic jobs (were timer interrupts), see Timers/app_timers.h */
-  INIT_TIMER_CONFIG(RCC_APB1Periph_TIM3, TIM3_IRQn, TIM3, 300);    // scrolling messages
-  INIT_TIMER_CONFIG(RCC_APB1Periph_TIM4, TIM4_IRQn, TIM4, 1000);   // display update
-  INIT_TIMER_CONFIG(RCC_APB1Periph_TIM5, TIM5_IRQn, TIM5, 15);     // matrix data refresh
-  INIT_TIMER_CONFIG(RCC_APB1Periph_TIM7, TIM7_IRQn, TIM7, 10);     // keyboard poll
-  STOP_UPDATE();
-  RESUME_UPDATE();
+  /* Display mode (ping-pong, clock, ...), the one saved in the EEPROM */
+  Mode_Init();
 
   /* Console on USART3 */
   CmdSystem_Register();
@@ -183,14 +152,16 @@ void App_Init(void)
 
 /*
  * App task main loop (runs in the FreeRTOS default task after App_Init()).
- * Every millisecond: handle received serial command bytes, run the periodic
- * game/display jobs that used to be timer interrupts, save settings.
+ * Every millisecond: handle received serial bytes and keyboard keys, run the
+ * active display mode, refresh the LED matrix, save changed settings.
  */
+#define MATRIX_REFRESH_MS 4u
+
 void App_Run(void)
 {
   uint32_t next = osKernelGetTickCount();
   uint32_t loops = 0;
-  for (;;)
+  for (;; loops++)
   {
     next += 1u;
     if ((int32_t)(osKernelGetTickCount() - next) > 10)
@@ -199,9 +170,14 @@ void App_Run(void)
     }
     osDelayUntil(next);
     UartRx_Poll();
-    AppTimers_Run();
+    Mode_Key(UsbKbd_GetKey());
+    Mode_Tick();
+    if (loops % MATRIX_REFRESH_MS == 0u)
+    {
+      Matrix_Refresh();            /* rebuilds the DMA data only if the image changed */
+    }
     Settings_Poll();
-    if (++loops % 1000u == 0u)
+    if (loops % 1000u == 0u)
     {
       app_task_stack_free = osThreadGetStackSpace(osThreadGetId());
     }

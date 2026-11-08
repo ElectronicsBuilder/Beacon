@@ -12,6 +12,7 @@
 #include "GAME.h"
 #include "usb_keyboard.h"
 #include "app_main.h"
+#include "mode.h"
 #include "cmsis_os.h"
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +70,7 @@ static int P_Status(int argc, char **argv)
   }
   Cli_Printf("time=%s", now);
   Cli_Printf("uptime_s=%lu", (unsigned long)(osKernelGetTickCount() / 1000u));
+  Cli_Printf("mode=%s", Mode_Current() ? Mode_Current()->name : "none");
   Cli_Printf("game=%s", P_GameState());
   Cli_Printf("player1=%s", PLAYER1.name);
   Cli_Printf("player2=%s", PLAYER2.name);
@@ -166,8 +168,36 @@ static int P_Echo(int argc, char **argv)
 static int P_Keys(int argc, char **argv)
 {
   (void)argc; (void)argv;
-  Cli_Printf("single-key mode: a/b k/m score, s start, / | pause/resume; ESC to return");
+  if (PingPong_IsActive())
+    Cli_Printf("single-key mode: a/b k/m score, s start, / | pause/resume; ESC to return");
+  else
+    Cli_Printf("single-key mode: keys go to the %s mode; ESC to return", Mode_Current()->name);
   Cli_EnterKeysMode();
+  return 0;
+}
+
+/* mode [name|number]: list the modes or switch to one (saved) */
+static int P_Mode(int argc, char **argv)
+{
+  if (argc > 1)
+  {
+    int index = Mode_Find(argv[1]);
+    if (index < 0)
+    {
+      char *end;
+      long n = strtol(argv[1], &end, 10);
+      if (*end == '\0' && n >= 1 && n <= Mode_Count()) index = (int)n - 1;
+    }
+    if (index < 0) return Cli_Error("unknown mode '%s' (type mode)", argv[1]);
+    Mode_Select(index);
+  }
+  for (int i = 0; i < Mode_Count(); i++)
+  {
+    const AppMode *m = Mode_Get(i);
+    Cli_Printf("%c %d %-10s F%d  %s%s", i == Mode_CurrentIndex() ? '*' : ' ', i + 1, m->name,
+               i + 1, m->title, m->kind == MODE_KIND_GAME ? " (game)" : "");
+  }
+  Cli_Printf("mode=%s", Mode_Current()->name);
   return 0;
 }
 
@@ -188,7 +218,8 @@ static const CliCommand system_commands[] = {
   { "bright", "[5-100]",                  "show or set the matrix brightness (saved)",   P_Bright },
   { "log",    "[error|warn|info|debug]",  "show or set the log level",                    P_Log },
   { "echo",   "[on|off]",                 "off = machine mode (no echo/prompt)",          P_Echo },
-  { "keys",   "",                         "single-key game control (ESC to return)",      P_Keys },
+  { "mode",   "[name|number]",            "list the display modes or switch (saved)",    P_Mode },
+  { "keys",   "",                         "single-key control of the mode (ESC to return)", P_Keys },
   { "reboot", "",                         "restart the board",                            P_Reboot },
 };
 

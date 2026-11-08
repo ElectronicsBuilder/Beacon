@@ -63,7 +63,24 @@ void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
     HID_KEYBD_Info_TypeDef *info = USBH_HID_GetKeybdInfo(phost);
     if (info != NULL)
     {
-      uint8_t key = USBH_HID_GetASCIICode(info);
+      uint8_t code = info->keys[0];          /* HID usage code */
+      uint8_t key;
+      if (code >= 0x3Au && code <= 0x45u)    /* F1..F12 */
+      {
+        key = (uint8_t)(KB_F1 + (code - 0x3Au));
+      }
+      else if (code >= 0x4Fu && code <= 0x52u)   /* right, left, down, up */
+      {
+        key = (uint8_t)(KB_RIGHT + (code - 0x4Fu));
+      }
+      else if (code == 0x29u)
+      {
+        key = KB_ESC;
+      }
+      else
+      {
+        key = USBH_HID_GetASCIICode(info);
+      }
       uint8_t next = (uint8_t)((key_head + 1u) % KEY_QUEUE_SIZE);
       if (key != 0U && next != key_tail)   /* drop the key if the queue is full */
       {

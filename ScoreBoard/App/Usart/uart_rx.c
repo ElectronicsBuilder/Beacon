@@ -8,6 +8,7 @@
 #include "app_hal.h"
 #include "Comm.h"
 #include "cli.h"
+#include "mode.h"
 
 #define UART_RX_SIZE 128u   /* bytes per port; commands are short */
 
@@ -69,7 +70,10 @@ void UartRx_Poll(void)
   uint8_t b;
   while (P_Pop(&rx_usart2, &b))
   {
-    APP_USART2_Byte((char)b);
+    if (PingPong_IsActive())  /* the radio remote controls the ping-pong game */
+    {
+      APP_USART2_Byte((char)b);
+    }
   }
   while (P_Pop(&rx_usart3, &b))
   {

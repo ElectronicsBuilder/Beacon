@@ -70,11 +70,6 @@ extern unsigned char TIMER_UPDATE;
 extern uint8_t SEC_H, MIN_H, HOUR_H;                    /* game clock (BCD) */
 extern char D_SEC[50], D_MIN[50], D_HOUR[50];           /* clock text */
 extern char number3[50], number4[50], number5[50], number6[50];   /* score text */
-extern uint8_t USB_KEYBOARD;
-extern USB_HID_HOST_STATUS_t host_status;
-extern uint16_t timer_count;
 
-uint8_t key_function(void);
-uint16_t POLL_USB(void);
 
 #endif // APP_MAIN_H

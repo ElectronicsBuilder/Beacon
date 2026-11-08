@@ -3,7 +3,7 @@
 #include "log.h"
 #include <stdio.h>
 #include "TIM_CTRL.h"
-#include "settings.h"
+#include "layout.h"
 #include "Ez_USART.h"
 #include "app_timers.h"
 #include "GAME.h"
@@ -14,7 +14,7 @@
 #include "app_main.h"
 
 /* Global variables declared in TIM_CTRL.h (defined here once) */
-uint16_t UPDATE_COUNTER, SCREEN_SLEEP, SCREEN_SLEEP_MIN, SLEEP_STAT;
+uint16_t SCREEN_SLEEP, SCREEN_SLEEP_MIN, SLEEP_STAT;
 
 
 
@@ -39,35 +39,35 @@ if(GAME.STATUS == start)
 		itoa(MIN_H, D_MIN, 16);
 		itoa(HOUR_H,D_HOUR, 16);
 
-	 	 calculateLEDString("TM",0,24,Font8x8);
+	 	 calculateLEDString("TM",0,LAYOUT_LINE_Y(3),Font8x8);
 
 	 	 CHANGE_FONT(GREEN);
 
 	     if(MIN_H < 9)
 	     {
-	    	 calculateLEDString("  ",18,24,Font8x8);
-	    	 calculateLEDString(D_MIN,18,24,Font8x8);
+	    	 calculateLEDString("  ",18,LAYOUT_LINE_Y(3),Font8x8);
+	    	 calculateLEDString(D_MIN,18,LAYOUT_LINE_Y(3),Font8x8);
 	     }
 	     if(MIN_H > 10)
 	     {
-	    	 calculateLEDString(D_MIN,18,24,Font8x8);
+	    	 calculateLEDString(D_MIN,18,LAYOUT_LINE_Y(3),Font8x8);
 	     }
 
 	 	 CHANGE_FONT(BLUE);
 
-	 	 calculateLEDString(":",33,24,Font8x8);
+	 	 calculateLEDString(":",33,LAYOUT_LINE_Y(3),Font8x8);
 
 	 	 CHANGE_FONT(RED);
 
 	     if(SEC_H < 9)
 	     {
-	     	calculateLEDString("  ",40,24,Font8x8);
-	     	calculateLEDString(D_SEC,40,24,Font8x8);
+	     	calculateLEDString("  ",40,LAYOUT_LINE_Y(3),Font8x8);
+	     	calculateLEDString(D_SEC,40,LAYOUT_LINE_Y(3),Font8x8);
 	     }
 
 	     if(SEC_H > 10)
 	     {
-	    	 calculateLEDString(D_SEC,40,24,Font8x8);
+	    	 calculateLEDString(D_SEC,40,LAYOUT_LINE_Y(3),Font8x8);
 	     }
 
 
@@ -114,7 +114,7 @@ void APP_TIM3_Tick(void)
 
 
   		// USART_puts(USART3, GAME.DISPLAY_WINNER);
-  		//calculateScrollText(GAME.DISPLAY_WINNER,Font8x8,28,0,&scroll1);
+  		//calculateScrollText(GAME.DISPLAY_WINNER,Font8x8,28,LAYOUT_LINE_Y(0),&scroll1);
   		  GAME.TOGGLE_WINNER = 0;
   	  }
 
@@ -122,8 +122,8 @@ void APP_TIM3_Tick(void)
   		GAME.DISPLAY_WINNER = "CURRENT WINNER: ";
 	}
 
-  	  	  calculateScrollText(GAME.DISPLAY_WINNER,Font8x8,28,0,&scroll1);
-  	  	  calculateScrollText(GAME.MESSAGE,Font8x8,15,16,&scroll2);
+  	  	  calculateScrollText(GAME.DISPLAY_WINNER,Font8x8,28,LAYOUT_LINE_Y(0),&scroll1);
+  	  	  calculateScrollText(GAME.MESSAGE,Font8x8,15,LAYOUT_LINE_Y(2),&scroll2);
 
 
 
@@ -146,7 +146,7 @@ void APP_TIM4_Tick(void)
 	  PLAYER1.AT_score = PLAYER1.SAVED_SCORE_DATA[PLAYER2.id];
 	  PLAYER2.AT_score = PLAYER2.SAVED_SCORE_DATA[PLAYER1.id];
 
-  	 	 	 calculateLEDString("HS",0,24,Font8x8);
+  	 	 	 calculateLEDString("HS",0,LAYOUT_LINE_Y(3),Font8x8);
 
   		 	 CHANGE_FONT(GREEN);
 
@@ -156,29 +156,29 @@ void APP_TIM4_Tick(void)
 
   			 if(PLAYER1.AT_score < 9)
   				     {
-  				    	 calculateLEDString("  ",18,24,Font8x8);
-  				    	 calculateLEDString(number5,18,24,Font8x8);
+  				    	 calculateLEDString("  ",18,LAYOUT_LINE_Y(3),Font8x8);
+  				    	 calculateLEDString(number5,18,LAYOUT_LINE_Y(3),Font8x8);
   				     }
   				     if(PLAYER1.AT_score > 10)
   				     {
-  				    	 calculateLEDString(number5,18,24,Font8x8);
+  				    	 calculateLEDString(number5,18,LAYOUT_LINE_Y(3),Font8x8);
   				     }
 
   				 	 CHANGE_FONT(BLUE);
 
-  				 	 calculateLEDString(":",33,24,Font8x8);
+  				 	 calculateLEDString(":",33,LAYOUT_LINE_Y(3),Font8x8);
 
   				 	 CHANGE_FONT(RED);
 
   				     if(PLAYER2.AT_score < 9)
   				     {
-  				     	calculateLEDString("  ",40,24,Font8x8);
-  				     	calculateLEDString(number6,40,24,Font8x8);
+  				     	calculateLEDString("  ",40,LAYOUT_LINE_Y(3),Font8x8);
+  				     	calculateLEDString(number6,40,LAYOUT_LINE_Y(3),Font8x8);
   				     }
 
   				     if(PLAYER2.AT_score > 10)
   				     {
-  				    	 calculateLEDString(number6,40,24,Font8x8);
+  				    	 calculateLEDString(number6,40,LAYOUT_LINE_Y(3),Font8x8);
   				     }
 
 
@@ -189,7 +189,7 @@ void APP_TIM4_Tick(void)
 
 	  if(GAME.STATUS == idle || GAME.STATUS == stop)
 	  {
-		calculateLEDString("  SCORE  BOARD    ",0,8,Font8x8);
+		calculateLEDString("  SCORE  BOARD    ",0,LAYOUT_LINE_Y(1),Font8x8);
 		GAME.SERVER = no_server;
 		STOP_TIMER(RTC_TIM_TYPE);
 		/*
@@ -212,14 +212,14 @@ void APP_TIM4_Tick(void)
 	  if(GAME.STATUS == select_player1_mode)
 	  {
 		  CHANGE_FONT(NAME_SELECT_P1_COLOR);
-		  calculateLEDString( "         ", 0, 8, Font8x8);
-		  calculateLEDString( PLAYER1.name, 0, 8, Font8x8);
+		  calculateLEDString( "         ", 0, LAYOUT_LINE_Y(1), Font8x8);
+		  calculateLEDString( PLAYER1.name, 0, LAYOUT_LINE_Y(1), Font8x8);
 
 		  PLAYER1.score = PLAYER1.PLAYER_DATA[PLAYER2.id];
 		  PLAYER2.score = PLAYER2.PLAYER_DATA[PLAYER1.id];
 
 		//	tostring(numberscore1, PLAYER2.score);
-		//	 calculateLEDString(numberscore1,18+WIDTH/2,24,Font8x8);
+		//	 calculateLEDString(numberscore1,18+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
 
 			// DISPLAY_INT2(USART3, numberscore1,10, 1);
 	  }
@@ -227,15 +227,15 @@ void APP_TIM4_Tick(void)
 	  if(GAME.STATUS == select_player2_mode)
 	  {
 		  CHANGE_FONT(NAME_SELECT_P2_COLOR);
-		  calculateLEDString( "         ", 56, 8, Font8x8);
-		  calculateLEDString(PLAYER2.name, 72, 8, Font8x8);
+		  calculateLEDString( "         ", 56, LAYOUT_LINE_Y(1), Font8x8);
+		  calculateLEDString(PLAYER2.name, 72, LAYOUT_LINE_Y(1), Font8x8);
 
 		  PLAYER1.score = PLAYER1.PLAYER_DATA[PLAYER2.id];
 		  PLAYER2.score = PLAYER2.PLAYER_DATA[PLAYER1.id];
 
 
 		//	 tostring(numberscore2, PLAYER1.score);
-		 //   calculateLEDString(numberscore2,40+WIDTH/2,24,Font8x8);
+		 //   calculateLEDString(numberscore2,40+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
 		 //    DISPLAY_INT2(USART3, numberscore2,10, 1);
 
 	  }
@@ -247,22 +247,22 @@ void APP_TIM4_Tick(void)
 	tostring(number4, PLAYER1.score);
 
 
-    calculateLEDString("SC",0+WIDTH/2,24,Font8x8);
+    calculateLEDString("SC",0+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
     CHANGE_FONT(RED);
 
     if(PLAYER1.score < 10)
     {
-    	calculateLEDString("  ",18+WIDTH/2,24,Font8x8);
-        calculateLEDString(number4,26+WIDTH/2,24,Font8x8);
+    	calculateLEDString("  ",18+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
+        calculateLEDString(number4,26+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
     }
     if(PLAYER1.score > 9)
     {
-    	 calculateLEDString(number4,18+WIDTH/2,24,Font8x8);
+    	 calculateLEDString(number4,18+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
     }
 
     CHANGE_FONT(BLUE);
 
-    calculateLEDString(":",33+WIDTH/2,24,Font8x8);
+    calculateLEDString(":",33+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
 
     CHANGE_FONT(GREEN);
 
@@ -270,13 +270,13 @@ void APP_TIM4_Tick(void)
 
     if(PLAYER2.score < 10)
     {
-    	calculateLEDString("  ",40+WIDTH/2,24,Font8x8);
-    	calculateLEDString(number3,40+WIDTH/2,24,Font8x8);
+    	calculateLEDString("  ",40+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
+    	calculateLEDString(number3,40+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
     }
 
     if(PLAYER2.score > 9)
     {
-        calculateLEDString(number3,40+WIDTH/2,24,Font8x8);
+        calculateLEDString(number3,40+WIDTH/2,LAYOUT_LINE_Y(3),Font8x8);
     }
 
 
@@ -297,34 +297,34 @@ void APP_TIM4_Tick(void)
 
 
   		  	 CHANGE_FONT(WHITE);
-  		  	 calculateLEDString("VS",56,8,Font8x8 );
+  		  	 calculateLEDString("VS",56,LAYOUT_LINE_Y(1),Font8x8 );
   		  	 if(GAME.initial_players_name == 1)
   		  	 {
   		  		 if(GAME.SERVER == PLAYER_1)
   		  		 {
-  		  			 calculateLEDString( "       ", 0, 8, Font8x8);
+  		  			 calculateLEDString( "       ", 0, LAYOUT_LINE_Y(1), Font8x8);
   		  			 CHANGE_FONT(NAME_SERVER_COLOR);
-  		  		  	 calculateLEDString( PLAYER1.name, 0, 8, Font8x8);
+  		  		  	 calculateLEDString( PLAYER1.name, 0, LAYOUT_LINE_Y(1), Font8x8);
   		  		 }
 
   		  		 else
   		  		 {
-  		  		 calculateLEDString( "       ", 0, 8, Font8x8);
+  		  		 calculateLEDString( "       ", 0, LAYOUT_LINE_Y(1), Font8x8);
   		  			 CHANGE_FONT(NAME_RECEIVER_COLOR);
-  		  		  	 calculateLEDString( PLAYER1.name, 0, 8, Font8x8);
+  		  		  	 calculateLEDString( PLAYER1.name, 0, LAYOUT_LINE_Y(1), Font8x8);
 				 }
 
   		  		 if(GAME.SERVER == PLAYER_2)
   		  		 {
-  		  			 calculateLEDString( "       ", 72, 8, Font8x8);
+  		  			 calculateLEDString( "       ", 72, LAYOUT_LINE_Y(1), Font8x8);
   	  	  		     CHANGE_FONT(NAME_SERVER_COLOR);
-  	  	  		     calculateLEDString(PLAYER2.name, 72, 8, Font8x8);
+  	  	  		     calculateLEDString(PLAYER2.name, 72, LAYOUT_LINE_Y(1), Font8x8);
   		  		 }
   		  		 else
   		  		 {
-  		  			 calculateLEDString( "       ", 72, 8, Font8x8);
+  		  			 calculateLEDString( "       ", 72, LAYOUT_LINE_Y(1), Font8x8);
   	  	  		     CHANGE_FONT(NAME_RECEIVER_COLOR);
-  	  	  		     calculateLEDString(PLAYER2.name, 72, 8, Font8x8);
+  	  	  		     calculateLEDString(PLAYER2.name, 72, LAYOUT_LINE_Y(1), Font8x8);
   		  		 }
 
   		  	 }
@@ -362,27 +362,6 @@ void APP_TIM4_Tick(void)
 
 
 
-void APP_TIM5_Tick(void) // usb device not supported handler
-{
-
-  if (1) /* update flag already cleared by HAL_TIM_IRQHandler */
-  {
-	
-  }
-
-
-
-timer_count++;
-if(timer_count >= 2)
-{
-	  Matrix_Refresh();          /* only rebuilds the DMA data when the image changed */
-}
-
-
-}
-
-
-
 void DISPLAY_SLEEP(void)
 {
 	STOP_UPDATE_DISPLAY();
@@ -392,18 +371,6 @@ void DISPLAY_SLEEP(void)
 
 void KEYBOARD_CONTROL(uint8_t data)
 {
-	/* LED matrix brightness: '+' brighter, '-' dimmer (not used by the game) */
-	if(data == '+' || data == '=')
-	{
-		Matrix_SetBrightness(Matrix_GetBrightness() + MATRIX_BRIGHTNESS_STEP);
-		Settings_BrightnessChanged();
-	}
-	if(data == '-' || data == '_')
-	{
-		uint8_t b = Matrix_GetBrightness();
-		Matrix_SetBrightness(b > MATRIX_BRIGHTNESS_STEP ? b - MATRIX_BRIGHTNESS_STEP : MATRIX_BRIGHTNESS_MIN);
-		Settings_BrightnessChanged();
-	}
 	if(data == '@')
 	{
 		SLEEP_STAT = sleep_display_disable;
@@ -565,47 +532,6 @@ void KEYBOARD_CONTROL(uint8_t data)
 		         	               }
 }
 
-void APP_TIM7_Tick(void) // usb device not supported handler
-{
-
-  if (1) /* update flag already cleared by HAL_TIM_IRQHandler */
-  {
-	
-  }
-
-  UPDATE_COUNTER++;
-  if(UPDATE_COUNTER >= 4)
-  {
-	  UPDATE_COUNTER = 0;
-
-	  RESUME_DATA_UPDATE();
-  }
-
-  if(UPDATE_COUNTER <= 4)
-  {
-
-	  STOP_DATA_UPDATE();
-  }
-
-  uint8_t data = POLL_USB();
-
-
-  KEYBOARD_CONTROL(data);
-
-}
-
-
-
-void STOP_DATA_UPDATE(void)
-{
-	STOP_TIMER(TIM5);
-}
-
-
-void RESUME_DATA_UPDATE(void)
-{
-	  INIT_TIMER_CONFIG(RCC_APB1Periph_TIM5, TIM5_IRQn, TIM5, 10);
-}
 void STOP_UPDATE(void)
 {
 	//STOP_TIMER(TIM2);
