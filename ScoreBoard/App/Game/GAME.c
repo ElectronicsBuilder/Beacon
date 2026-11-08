@@ -1,5 +1,7 @@
 
 #include "GAME.h"
+#include "log.h"
+#include <stdio.h>
 #include "Ez_USART.h"
 #include "RANDOM_NUMBER.h"
 #include "EEPROM.h"
@@ -17,10 +19,7 @@ unsigned char CURRENT_SERVER[] = { no_server, PLAYER_1, PLAYER_2};
 
 //#define P_LOOKUP
 //#define SIMULATE_EE
-//#define DEBUG_GAME
 
-//#define DEBUG_DISPLAY_PLAYER
-//#define DEBUG_GAME_AT_SCORES
 
 void  RETURN_RANDOM_SERVER(void)
 {
@@ -133,12 +132,6 @@ GAMERS RETURN_SAVE_LOC(uint16_t id, GAMERS GAMERX)
 	GAMERX.PD_loc = start_loc+ 64;
 	GAMERX.score_data_loc = start_loc+ 96;
 
-#ifdef DEBUG_DISPLAY_PLAYER
-	DISPLAY_INT2(USART3,GAMERX.name_loc, 10, 0);			USART_puts(USART3, " -> ");
-	DISPLAY_INT2(USART3,GAMERX.message_loc, 10, 0);			USART_puts(USART3, " -> ");
-	DISPLAY_INT2(USART3,GAMERX.PD_loc, 10, 0);				USART_puts(USART3, " -> ");
-	DISPLAY_INT2(USART3,GAMERX.score_data_loc, 10, 0);
-#endif
 	return GAMERX;
 
 #endif
@@ -151,10 +144,6 @@ uint16_t RETURN_SCORE_LOC(uint16_t id)
 {
 
 	uint16_t score_loc = (32*id) + 2560;
-	eol(USART3);
-	USART_puts(USART3, " STORAGE LOC of ID  ");DISPLAY_INT2(USART3, id, 10, 0);USART_puts(USART3, "  -> ");
-	DISPLAY_INT2(USART3, score_loc, 10, 0);
-	eol(USART3);
 	return score_loc;
 }
 
@@ -177,7 +166,7 @@ GAMERS SAVING_GAMER_DATA2(uint16_t id, GAMERS GAMERX)
 	//DISPLAY_INT2(USART3, status, 10, 1);
 	if(status == ee_saved)
 	{
-		USART_puts(USART3, "SAVED STAT DETECTED ");
+		/* EEPROM already initialised: nothing to write */
 	}
 
 	else
@@ -205,7 +194,7 @@ GAMERS SAVING_GAMER_DATA_INIT(uint16_t id, GAMERS GAMERX)
 	//DISPLAY_INT2(USART3, status, 10, 1);
 	if(status == ee_saved)
 	{
-		USART_puts(USART3, "SAVED STAT DETECTED ");
+		/* EEPROM already initialised: nothing to write */
 	}
 
 	else
@@ -228,18 +217,13 @@ GAMERS SAVING_GAMER_DATA_SCORE(uint16_t id, GAMERS GAMERX)
 	GAMERX = PORT_GAMER_FROM_ID(id);
 #endif
 
-	eol(USART3);
-	USART_puts(USART3, "SAVING ->  ");
-	DISPLAY_INT2(USART3, id, 10, 1);
-
-	USART_puts(USART3, "@ LOCATION -> ");
-	DISPLAY_INT2(USART3,GAMERX.score_data_loc, 10, 1);
+	LOG_I("Saving results for %s", GAMERX.name);
 
 	uint16_t status = CHECK_SAVED();			// NEED TO FIGURE THIS OUT LATER. WHETHER THIS FLAG GOES HIGH WHEN GAMER DATA ARE XFER. IDK. @*f*h
 	//DISPLAY_INT2(USART3, status, 10, 1);
 	if(status == ee_saved)
 	{
-		USART_puts(USART3, "SAVED STAT DETECTED ");
+		/* EEPROM already initialised: nothing to write */
 	}
 
 	else
@@ -482,9 +466,10 @@ GAMERS TEST_READ_DATA2_SCORE(uint16_t id, GAMERS GAMERX)
 
 
 
+/* Print a player's record (name, message, wins and points against each
+ * other player). Used by the console "game stats" command. */
 void DISPLAY_PLAYER_INFO(GAMERS GAMERX)
 {
-#ifdef DEBUG_DISPLAY_PLAYER
 	eol(USART3);
 	USART_puts(USART3, "GAMER NAME -> "); USART_puts(USART3, GAMERX.name); eol(USART3);
 	USART_puts(USART3, "GAMER MESSAGE -> "); USART_puts(USART3,  GAMERX.message); eol(USART3);
@@ -527,7 +512,6 @@ void DISPLAY_PLAYER_INFO(GAMERS GAMERX)
 
 
 	//USART_puts(USART3, GAMERX.SCORE_DATA); eol(USART3);
-#endif
 }
 
 void TEST_GAMERS2(GAMERS GAMERX, uint16_t id)
@@ -546,7 +530,6 @@ void TEST_GAMERS2(GAMERS GAMERX, uint16_t id)
 	USART_puts(USART3, "GAMER DATA -> "); USART_puts(USART3, GAMER_ALL[id].PLAYER_DATA); eol(USART3);
 	*/
 
-	DISPLAY_PLAYER_INFO(GAMER_ALL[id]);
 }
 
 void UPDATE_TEST_GAMER(GAMERS GAMERX, uint16_t id)
@@ -557,8 +540,6 @@ void UPDATE_TEST_GAMER(GAMERS GAMERX, uint16_t id)
 	GAMERX = TEST_READ_DATA2_SCORE(id, GAMERX);
 
 	GAMER_ALL[id] = GAMERX;
-
-	DISPLAY_PLAYER_INFO(GAMER_ALL[id]);
 }
 
 void TEST_GAMERS3(uint16_t id)
@@ -610,15 +591,15 @@ void SHIFT_PLAYERS(GAMERS GAMERX, uint16_t id, CONSOLE_STAT_T x)
 	if(x == PLAYER_1)
 	{
 		PLAYER1 = GAMER_ALL[id]; //update player 1 info
-		DISPLAY_PLAYER_INFO(GAMER_ALL[id]);
-		return PLAYER1;
+		LOG_I("Player 1: %s", PLAYER1.name);
+		return;
 	}
 
 	else if(x == PLAYER_2)
 	{
 		PLAYER2 = GAMER_ALL[id]; //update player 2 info
-		DISPLAY_PLAYER_INFO(GAMER_ALL[id]);
-		return PLAYER2;
+		LOG_I("Player 2: %s", PLAYER2.name);
+		return;
 	}
 
 
@@ -676,8 +657,6 @@ void DISPLAY_PLAYER(uint16_t NAME)
 
 void CHECK_UPDATE_SCORE(GAMERS GAMERX, GAMERS GAMERY)
 {
-  uint16_t m, n;
-
   GAMER_ALL[GAMERX.id] = GAMERX;
   GAMER_ALL[GAMERY.id] = GAMERY;
 
@@ -694,29 +673,6 @@ void CHECK_UPDATE_SCORE(GAMERS GAMERX, GAMERS GAMERY)
 //  DISPLAY_PLAYER_INFO(GAMER_ALL[GAMERY.id]);
 
 
-  eol(USART3);
-
-  DISPLAY_INT2(USART3, GAMERX.SAVED_SCORE_DATA[GAMERY.id], 10, 0);
-  USART_puts(USART3, " -->");
-  for(m = 0; m < I2C_EEPROM_PAGE; m++)
-  {
-    USART_putc(USART3, GAMERX.SAVED_SCORE_DATA[m]);
-  }
-
-  eol(USART3);
-
-  USART_puts(USART3, " ** ");
-
-  eol(USART3);
-
-
-  DISPLAY_INT2( USART3, GAMERY.SAVED_SCORE_DATA[GAMERX.id] , 10, 0);
-  USART_puts(USART3, " -->");
-
-  for(n = 0; n < I2C_EEPROM_PAGE; n++)
-  {
-    USART_putc(USART3, GAMERY.SAVED_SCORE_DATA[n]);
-  }
 
 
 
@@ -741,10 +697,6 @@ GAMERS UPDATE_RETURN_SCORE(GAMERS GAMERX, GAMERS GAMERY)
 
 	   GAMERX.PLAYER_DATA[GAMERY.id] = Eeprom24_ReadByte(EE24_ADDR_0, (GAMERX.PD_loc + GAMERY.id));
 
-#ifdef DEBUG_GAME_AT_SCORES
-	   eol(USART3); USART_puts(USART3, " WINNER SCORE  - >  ");
-	   DISPLAY_INT2(USART3,   GAMERX.PLAYER_DATA[GAMERY.id], 10, 1);
-#endif
 
 	  // TEST_GAMERS2(GAMER_ALL[GAMERX.id], GAMERX.id);
 	  // TEST_GAMERS2(GAMER_ALL[GAMERY.id], GAMERY.id);
@@ -761,16 +713,6 @@ uint16_t m, c_id;
 
   uint8_t data, data2, score_track2;
 
-#ifdef DEBUG_GAME_AT_SCORES
-  eol(USART3);
-  USART_puts(USART3, " OLD SCORE ");
-  DISPLAY_INT2(USART3, GAMERX.SAVED_SCORE_DATA[GAMERY.id], 10, 0);
-
-  USART_puts(USART3, " -- ");
-
-  DISPLAY_INT2( USART3, GAMERY.SAVED_SCORE_DATA[GAMERX.id], 10, 0);
-  eol(USART3);
-#endif
 
 
   if(GAMERX.SAVED_SCORE_DATA[GAMERY.id] < ALL_TIME_SC[GAMERX.id][GAMERY.id][0])
@@ -792,24 +734,6 @@ uint16_t m, c_id;
   	  data2=Eeprom24_ReadByte(EE24_ADDR_0, (GAMERY.score_data_loc + GAMERX.id));
   }
 
-#ifdef DEBUG_GAME_AT_SCORES
-  eol(USART3);
-  USART_puts(USART3, GAMERX.name);
-  USART_puts(USART3, " VS ");
-  USART_puts(USART3, GAMERY.name);
-  eol(USART3);
-
-
-
-  eol(USART3);
-
-  DISPLAY_INT2(USART3, GAMERX.SAVED_SCORE_DATA[GAMERY.id], 10, 0);
-
-  USART_puts(USART3, " -- ");
-
-  DISPLAY_INT2( USART3, GAMERY.SAVED_SCORE_DATA[GAMERX.id], 10, 0);
-  eol(USART3);
-#endif
 
 
   //--------------new stuff--------
@@ -818,12 +742,6 @@ uint16_t m, c_id;
   GAMERX = UPDATE_RETURN_SCORE(GAMERX, GAMERY);
 
 
-#ifdef DEBUG_GAME_AT_SCORES
-  eol(USART3); USART_puts(USART3, " PLAYER1  - >  ");
-  DISPLAY_INT2(USART3, data, 10, 1);
-  eol(USART3);USART_puts(USART3, " PLAYER2 - >  ");
-  DISPLAY_INT2(USART3, data2, 10, 1);
-#endif
 
   UPDATE_TEST_GAMER(GAMER_ALL[GAMERX.id], GAMERX.id);
   UPDATE_TEST_GAMER(GAMER_ALL[GAMERY.id], GAMERY.id);
@@ -874,21 +792,6 @@ void GAME_TYPE_1(void)
 //	uint16_t server2 = CURRENT_SERVER[serv];
 
 
-#ifdef DEBUG_GAME
-
-	eol(USART3);
-	USART_puts(USART3, "Game points ->");
-	DISPLAY_INT2(USART3, GAME.POINTS, 10, 0);
-
-	eol(USART3);
-	USART_puts(USART3, "serv ->");
-	DISPLAY_INT2(USART3, serv, 10, 0);
-
-	eol(USART3);
-	USART_puts(USART3, "game server ->");
-	DISPLAY_INT2(USART3, GAME.SERVER, 10, 0);
-
-#endif
 
 
 	if(PLAYER1.score > PLAYER2.score && PLAYER1.score == 10)
@@ -922,6 +825,8 @@ void GAME_TYPE_1(void)
 		GAME.WINNER_NAME = PLAYER1.name;
 		GAME.LOSER_NAME = PLAYER2.name;
 		GAME.TOGGLE_WINNER = 1;
+		LOG_I("Game over: %s beat %s %d:%d", PLAYER1.name, PLAYER2.name,
+		      ALL_TIME_SC[PLAYER1.id][PLAYER2.id][0], ALL_TIME_SC[PLAYER1.id][PLAYER2.id][1]);
 		//UPDATE_CURRENT_WINNER();
 
 
@@ -955,6 +860,8 @@ void GAME_TYPE_1(void)
 				GAME.WINNER_NAME = PLAYER2.name;
 				GAME.LOSER_NAME = PLAYER1.name;
 				GAME.TOGGLE_WINNER = 1;
+				LOG_I("Game over: %s beat %s %d:%d", PLAYER2.name, PLAYER1.name,
+				      ALL_TIME_SC[PLAYER2.id][PLAYER1.id][0], ALL_TIME_SC[PLAYER2.id][PLAYER1.id][1]);
 				//UPDATE_CURRENT_WINNER();
 
 
@@ -998,12 +905,6 @@ void GAME_TYPE_1(void)
 		GAME.TOGGLE_WINNER = 1;
 		//UPDATE_CURRENT_WINNER();
 
-#ifdef DEBUG_GAME
-
-		DISPLAY_SCORE();
-		 USART_puts(USART3, "PLAYER1 MESSAGE -> ");
-		USART_puts(USART3, PLAYER1.message);
-#endif
 
 	}
 
@@ -1020,38 +921,9 @@ void GAME_TYPE_1(void)
 		GAME.TOGGLE_WINNER = 1;
 		//UPDATE_CURRENT_WINNER();
 
-#ifdef DEBUG_GAME
-		DISPLAY_SCORE();
-		USART_puts(USART3, "PLAYER2 MESSAGE -> ");
-		USART_puts(USART3, PLAYER2.message);
-#endif
 	}
 
 
-#ifdef DEBUG_GAME
-	eol(USART3);
-	USART_puts(USART3, "GAME SERVER ->  ");
-	DISPLAY_SERVER(GAME.SERVER);
-
-/*	eol(USART3);
-	USART_puts(USART3, "GAME SERVER SERVER2 ->  ");
-	DISPLAY_SERVER(server2);
-*/ //not needed
-
-	eol(USART3);
-	USART_puts(USART3, "GAME POINTS -> ");
-	DISPLAY_INT2(USART3, GAME.POINTS, 10, 0);
-	eol(USART3);
-
-	USART_puts(USART3, "PLAYER 1 SCORE -> ");
-	DISPLAY_INT2(USART3, PLAYER1.score, 10, 0);
-	eol(USART3);
-
-	USART_puts(USART3, "PLAYER 2 SCORE -> ");
-	DISPLAY_INT2(USART3, PLAYER2.score, 10, 0);
-	eol(USART3);
-
-#endif
 
 
 }
@@ -1059,16 +931,11 @@ void GAME_TYPE_1(void)
 void UPDATE_CURRENT_WINNER(void)
 {
 
-		  USART_puts(USART3, GAME.WINNER_NAME);
-		  char src[50], dest [50];
-		  strcpy(src,GAME.WINNER_NAME);
-		  strcpy(dest, "CURRENT WINNER : ");
-
-		  USART_puts(USART3, src);
-		  USART_puts(USART3, dest);
-		  strncat(dest, src, strlen(src));
-		  USART_puts(USART3, dest);
-		  GAME.DISPLAY_WINNER = dest;
+		  /* static: GAME.DISPLAY_WINNER keeps pointing at it after we return */
+		  static char winner_text[64];
+		  snprintf(winner_text, sizeof winner_text, "CURRENT WINNER : %s", GAME.WINNER_NAME);
+		  LOG_I("Winner: %s", GAME.WINNER_NAME);
+		  GAME.DISPLAY_WINNER = winner_text;
 		  GAME.TOGGLE_WINNER = 0;
 }
 

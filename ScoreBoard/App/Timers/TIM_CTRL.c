@@ -1,5 +1,7 @@
 
 
+#include "log.h"
+#include <stdio.h>
 #include "TIM_CTRL.h"
 #include "settings.h"
 #include "Ez_USART.h"
@@ -12,7 +14,6 @@
 #include "app_main.h"
 
 
-//#define DEBUG_USB_HID_KEYBOARD
 
 int32_t scroll1=0,scroll2=0;
 
@@ -108,31 +109,11 @@ void APP_TIM3_Tick(void)
   	  	  {
 
   	  	//  USART_puts(USART3, GAME.WINNER_NAME); eol(USART3);
-  		  char src[50], dest [50];
-  		  strcpy(src,GAME.WINNER_NAME);
-  		  strcpy(dest, "CURRENT WINNER : ");
-
-  		 // USART_puts(USART3, src);			eol(USART3);
-  		 // USART_puts(USART3, dest);			eol(USART3);
-  		  strncat(dest, src, strlen(src));
-  		 // SART_puts(USART3, dest);			eol(USART3);
-
-
-
-
-
-
-  		  char src2[50], dest2[50];
-
-  		strcpy(src2,GAME.LOSER_NAME);
-  		strcpy(dest2, " & LOSER : ");
-
-  		strncat(dest2, src2, strlen(src2));
-
-  		strncat(dest, dest2, strlen(dest2));
-
-
-  		 GAME.DISPLAY_WINNER = dest;
+  		  /* static: the scroll keeps using this text after the handler returns */
+  		  static char winner_text[80];
+  		  snprintf(winner_text, sizeof winner_text, "CURRENT WINNER : %s & LOSER : %s",
+  		           GAME.WINNER_NAME, GAME.LOSER_NAME);
+  		  GAME.DISPLAY_WINNER = winner_text;
 
 
 
@@ -553,24 +534,18 @@ void KEYBOARD_CONTROL(uint8_t data)
 
 		         	               if(data == 's')
 		         	               {
-		         	#ifdef DEBUG_GAME_START_CMD
-
-		         	            	   USART_puts(USART3, "PLAYER1 MESSAGE -> ");
-		         	            	   USART_puts(USART3, PLAYER1.message);
-		         	            	   eol(USART3);
-		         	            	   USART_puts(USART3, "PLAYER2 MESSAGE -> ");
-		         	            	   USART_puts(USART3, PLAYER2.message);
-		         	#endif
 
 		         	            	 if(PLAYER1.id == PLAYER2.id)
 		         	            	 {
 		         	            		 GAME.STATUS = display_error_msg;
 		         	            		 GAME.ERROR_MSG = "CHECK PLAYERS ID";
+		         	            		 LOG_W("Cannot start: both sides are the same player");
 		         	            	 }
 		         	            	 else
 		         	            	 {
 		         		            	 GAME.START = 1;
 		         		                 GAME.STATUS = start;
+		         		                 LOG_I("Game started: %s vs %s", PLAYER1.name, PLAYER2.name);
 		         		                 GAME.COMMAND = display_random_server;
 		         		                GAME.POINTS = 0;
 
@@ -621,12 +596,6 @@ void APP_TIM7_Tick(void) // usb device not supported handler
 
   uint8_t data = POLL_USB();
 
-#ifdef DEBUG_USB_HID_KEYBOARD
-if(data != 0)
-{
-	  USART_putc(USART3, data);
-}
-#endif
 
   KEYBOARD_CONTROL(data);
 

@@ -10,7 +10,6 @@
 #include "app_hal.h"
 #include "app_timers.h"
 
-//#define DEBUG_RTC_CLOCK
 
 #define RTC_TIMER_PERIPH   RCC_APB1Periph_TIM2
 #define RTC_TIMER_IRQ      TIM2_IRQn
@@ -22,10 +21,8 @@
 void RTC_Configuration(void);
 void RTC_RESET_TIME(void);
 void RTC_TimeShow(void);
-void RTC_Update(void);
 void RTC_SetMinutes(uint8_t minutes_bin);
 void RTC_SetHours(uint8_t hours_bcd);
-int  TIMER_GET_VAL(unsigned char trial);
 
 uint8_t ByteToBcd(uint8_t Value);
 uint8_t Bcd2ToByte(uint8_t Value);

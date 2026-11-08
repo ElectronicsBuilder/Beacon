@@ -1,6 +1,7 @@
 
 
 #include "EEPROM.h"
+#include "log.h"
 #include "Ez_USART.h"
 #include "i2c1_bus.h"
 
@@ -67,26 +68,9 @@ void ee_tx_byte(I2C_TypeDef* I2Cx, uint8_t addr, uint8_t data )
 
 uint16_t  CHECK_SAVED(void)
 {
+	/* "SAVED" marker at address 0 tells whether the EEPROM was initialised */
 	read_from_eeprom(WRITE_CHECK, 0x0000);
-
-	eol(USART3);
-	uint16_t status;
-
-	for(i = 0; i <= sizeof(SAVED_FLAG-1); i++)
-	{
-		USART_putc(USART3, WRITE_CHECK[i]);
-		if(WRITE_CHECK[i] == SAVED_FLAG[i])
-		{
-			status = ee_saved;
-		}
-		else {
-			status = ee_unsaved;
-			return status;
-		}
-
-	eol(USART3);
-	return status;
-	}
+	return (memcmp(WRITE_CHECK, SAVED_FLAG, sizeof SAVED_FLAG) == 0) ? ee_saved : ee_unsaved;
 }
 
 void EE_TEST(void)
@@ -96,9 +80,8 @@ void EE_TEST(void)
 	  if (I2C_CheckDevice(I2C_EEPROM_ADDR) != OK)
 	  {
 
-	    USART_puts(USART3, "I2C-Bus device with address is not responding\n");
+	    LOG_E("EEPROM (I2C 0x%02X) not responding", I2C_EEPROM_ADDR);
 
-	    DISPLAY_INT2(USART3, I2C_EEPROM_ADDR, 10, 1);
 
 
 
@@ -108,7 +91,7 @@ void EE_TEST(void)
 
 	  else{
 
-		  USART_puts(USART3, "I2C-Bus device eeprom initialized properly\n");
+		  LOG_I("EEPROM ok");
 
 		   //store_to_eeprom_single(0, 10)
 		  //  store_to_eeprom("PLAYER A", 100);
@@ -144,17 +127,7 @@ char* EE_TEST2(uint16_t loc)
 		//  store_to_eeprom("PLAYER A", 100);
 		 // store_to_eeprom("BEST PLAYER", 120);
 		  read_from_eeprom(TEST_STRING, loc);
-		  USART_puts(USART3, "TEST STRING IS -> ");
-		  USART_puts(USART3, TEST_STRING);
-
-		  eol(USART3);
-
 		  TEST_STRING_H = TEST_STRING;
-
-		  USART_puts(USART3, "TEST STRING CONV IS -> ");
-		  USART_puts(USART3, TEST_STRING_H);
-
-		  eol(USART3);
 
 		  return TEST_STRING_H;
 	//  }
@@ -169,7 +142,7 @@ void SAVE_PLAYER_DATA(void)
 	uint16_t status = CHECK_SAVED();
 	if(status == ee_saved)
 	{
-		USART_puts(USART3, "SAVED STAT DETECTED ");
+		/* already initialised */
 	}
 
 	else if(status == ee_unsaved)

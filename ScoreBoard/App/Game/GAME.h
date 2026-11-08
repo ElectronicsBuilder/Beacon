@@ -11,7 +11,6 @@
 
 #include "EEPROM.h"
 
-#define DEBUG_DISPLAY_PLAYER
 
 
 #define I2C_EEPROM_PAGE   (32)       // EEPROM memory page size
@@ -84,7 +83,7 @@ typedef struct
 }STATUS;
 
 
- char ALL_TIME_SC[10][10][2];
+ char ALL_TIME_SC[11][11][2];   /* [player][opponent][own,opponent score], 11 players (id 0..10) */
 
 
 typedef struct

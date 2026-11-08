@@ -58,6 +58,7 @@ set_source_files_properties(${APP_SOURCES} PROPERTIES COMPILE_OPTIONS "-fcommon"
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     App/Main
+    App/Console
     App/Usart
     App/Timers
     App/Rtc

@@ -61,6 +61,8 @@
 #include "usb_keyboard.h"
 #include "uart_rx.h"
 #include "settings.h"
+#include "log.h"
+#include "version.h"
 #include "cmsis_os.h"
 #include <string.h>
 #include <strings.h>
@@ -69,8 +71,6 @@
 char* PLAYER1_NAME;
 char* PLAYER2_NAME;
 
-//#define DEBUG_GAME_START_CMD
-//#define DEBUG_GAME
 #define ENABLE_MATRIX
 
 
@@ -2649,7 +2649,7 @@ void App_Init(void) {
 
    	  USART_INIT(USART3, 0, 0, 0, 0, 115200, USART3_IRQn);   // debug port, RX interrupt on
       USART_INIT(USART2, 0, 0, 0, 0, 19200, USART2_IRQn);    // radio, RX interrupt on
-      USART_puts(USART3, "INIT ->");
+      LOG_I("ScoreBoard firmware %s starting", FW_VERSION);
 
       I2C_SelfTest();   /* EEPROM wiring test (App/Eeprom/i2c_selftest.c), before TFT_INIT */
 
@@ -2719,13 +2719,6 @@ void App_Init(void) {
 
 
     //while(1);
-
-
-
-   char test1[20];
-   tostring(test1, 100);
-
-   USART_puts(USART3, test1);
 
 
    RETURN_RANDOM_SERVER();
