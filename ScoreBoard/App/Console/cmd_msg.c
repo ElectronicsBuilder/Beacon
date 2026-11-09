@@ -91,6 +91,34 @@ static int P_Msg(int argc, char **argv)
     Cli_Printf("id=%d", id);
     return 0;
   }
+  if (strcmp(sub, "edit") == 0 && argc >= 4 && argc <= 6)
+  {
+    if (P_Number(argv[2], 1, MSG_MAX, &v) != 0 || MsgStore_Get((int)v) == NULL)
+      return Cli_Error("no message %s", argv[2]);
+    const char *line2 = "";
+    int color = MsgStore_Get((int)v)->color;           /* colour kept unless given */
+    for (int i = 4; i < argc; i++)
+    {
+      int found = Matrix_ColorFind(argv[i]);
+      if (found == MTX_C_BLACK) return Cli_Error("black text would not show");
+      if (i == argc - 1 && found >= 0) color = found;
+      else if (i == 4) line2 = argv[i];
+      else return Cli_Error("unknown colour '%s'", argv[i]);
+    }
+    if (MsgStore_Edit((int)v, argv[3], line2, (uint8_t)color) != 0)
+      return Cli_Error("lines: 1..%d printable characters", MSG_LINE_MAX);
+    LOG_I("Message %ld changed", v);
+    return 0;
+  }
+  if (strcmp(sub, "colour") == 0 && argc == 4)
+  {
+    int c = Matrix_ColorFind(argv[3]);
+    if (P_Number(argv[2], 1, MSG_MAX, &v) != 0 || MsgStore_Get((int)v) == NULL)
+      return Cli_Error("no message %s", argv[2]);
+    if (c < 0 || c == MTX_C_BLACK) return Cli_Error("colours: white red green blue yellow cyan magenta");
+    MsgStore_SetColor((int)v, (uint8_t)c);
+    return 0;
+  }
   if (strcmp(sub, "del") == 0 && argc == 3)
   {
     if (P_Number(argv[2], 1, MSG_MAX, &v) != 0 || MsgStore_Delete((int)v) != 0)
@@ -155,7 +183,7 @@ static int P_Msg(int argc, char **argv)
     P_Free();
     return 0;
   }
-  return Cli_Error("usage: msg [list|add|del|clear|show|order|time|gap|ticker|free] (help msg)");
+  return Cli_Error("usage: msg [list|add|edit|colour|del|clear|show|order|time|gap|ticker|free] (help msg)");
 }
 
 static const CliCommand msg_commands[] = {
@@ -164,6 +192,8 @@ static const CliCommand msg_commands[] = {
     "msg add \"line 1\" [\"line 2\"] [colour]   add; up to 40 characters per line\n"
     "     colour (last word): white red green blue yellow cyan magenta; default white\n"
     "     e.g. msg add \"HAPPY\" \"NEW YEAR\" yellow\n"
+    "msg edit <id> \"line 1\" [\"line 2\"] [colour]   change it (same id and place)\n"
+    "msg colour <id> <colour>      change only the colour\n"
     "msg del <id> | msg clear      delete one / all\n"
     "msg show <id>                 show it now (switches to Messages mode)\n"
     "msg order seq|random          play order\n"

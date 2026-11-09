@@ -165,6 +165,23 @@ int MsgStore_SetColor(int id, uint8_t color)
   return 0;
 }
 
+int MsgStore_Edit(int id, const char *line1, const char *line2, uint8_t color)
+{
+  int slot = id - 1;
+  if (MsgStore_Get(id) == NULL) return -1;
+  if (line2 == NULL) line2 = "";
+  if (!MsgQueue_TextValid(line1, 0) || !MsgQueue_TextValid(line2, 1)) return -2;
+  Msg *m = &queue.slots[slot];
+  memset(m->line1, 0, sizeof m->line1);
+  memset(m->line2, 0, sizeof m->line2);
+  strcpy(m->line1, line1);
+  strcpy(m->line2, line2);
+  m->color = color;
+  P_SaveSlot(slot);
+  changes++;
+  return 0;
+}
+
 void MsgStore_SetPlaylist(uint32_t mask)
 {
   playlist = mask;

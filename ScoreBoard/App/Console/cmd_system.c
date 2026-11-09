@@ -13,6 +13,7 @@
 #include "usb_keyboard.h"
 #include "app_main.h"
 #include "mode.h"
+#include "keys.h"
 #include "rtc_trim.h"
 #include "msg_store.h"
 #include "screen_layout.h"
@@ -304,6 +305,44 @@ static int P_Screen(int argc, char **argv)
   return 0;
 }
 
+/* key <key> ...: press keys as on the USB keyboard */
+static int P_KeyCode(const char *t)
+{
+  static const struct { const char *name; uint8_t code; } names[] = {
+    { "enter", KB_ENTER }, { "esc", KB_ESC }, { "up", KB_UP }, { "down", KB_DOWN },
+    { "left", KB_LEFT }, { "right", KB_RIGHT }, { "del", KB_DEL }, { "back", KB_BACK },
+    { "space", ' ' },
+  };
+  for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
+  {
+    if (strcmp(t, names[i].name) == 0) return names[i].code;
+  }
+  if ((t[0] == 'f' || t[0] == 'F') && t[1] >= '1' && t[1] <= '9')
+  {
+    int n = atoi(t + 1);
+    if (n >= 1 && n <= 12) return KB_F1 + n - 1;
+  }
+  return -1;
+}
+
+static int P_Key(int argc, char **argv)
+{
+  if (argc < 2) return Cli_Error("usage: key <key> ... (help key)");
+  for (int i = 1; i < argc; i++)
+  {
+    int code = P_KeyCode(argv[i]);
+    if (code >= 0)
+    {
+      Mode_Key((uint8_t)code);
+    }
+    else
+    {
+      for (const char *c = argv[i]; *c; c++) Mode_Key((uint8_t)*c);   /* plain text */
+    }
+  }
+  return 0;
+}
+
 /* reboot */
 static int P_Reboot(int argc, char **argv)
 {
@@ -357,6 +396,11 @@ static const CliCommand system_commands[] = {
     "screen <s> msgs all|none|<ids>     messages on this screen: screen clock msgs none\n"
     "The end screen is shown after a countdown (cd after then screen).\n"
     "Lines 2 and 4 need the HUB75 E line (MATRIX_PANEL_ROWS=64)." },
+  { "key", "<key> ...", "press USB keyboard keys", P_Key,
+    "key <key> ...    press keys as on the USB keyboard, e.g.\n"
+    "                 key f3   key enter   key \"NEW YEAR\" enter   key up up enter\n"
+    "names: enter esc up down left right del back space f1..f12; other words\n"
+    "are typed letter by letter (use quotes for spaces)." },
   { "keys", "", "single-key control (ESC back)", P_Keys,
     "keys    every key goes to the display, like the 2016 serial remote.\n"
     "        Ping-pong: a/b player 1 +1/-1, c/d player 2 +1/-1, s start, x save,\n"
