@@ -121,12 +121,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BLE_TXD_Pin BLE_RXD_Pin FLASH_WP_Pin FLASH_HOLD_Pin
-                           SPI4_CS_Pin SPI4_SCK_Pin SPI4_MISO_Pin SPI4_MOSI_Pin
-                           FLASH_CE_Pin WIFI_TXD_Pin WIFI_RXD_Pin */
-  GPIO_InitStruct.Pin = BLE_TXD_Pin|BLE_RXD_Pin|FLASH_WP_Pin|FLASH_HOLD_Pin
-                          |SPI4_CS_Pin|SPI4_SCK_Pin|SPI4_MISO_Pin|SPI4_MOSI_Pin
-                          |FLASH_CE_Pin|WIFI_TXD_Pin|WIFI_RXD_Pin;
+  /*Configure GPIO pins : FLASH_WP_Pin FLASH_HOLD_Pin SPI4_CS_Pin SPI4_SCK_Pin
+                           SPI4_MISO_Pin SPI4_MOSI_Pin FLASH_CE_Pin WIFI_TXD_Pin
+                           WIFI_RXD_Pin */
+  GPIO_InitStruct.Pin = FLASH_WP_Pin|FLASH_HOLD_Pin|SPI4_CS_Pin|SPI4_SCK_Pin
+                          |SPI4_MISO_Pin|SPI4_MOSI_Pin|FLASH_CE_Pin|WIFI_TXD_Pin
+                          |WIFI_RXD_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);

@@ -43,6 +43,7 @@ static inline UART_HandleTypeDef *APP_UartHandle(USART_TypeDef *usart)
 /* Interrupt hooks, called from the USER CODE sections of Core/Src/stm32f4xx_it.c */
 void APP_USART2_IRQ(void);          /* Usart/uart_rx.c: store received byte */
 void APP_USART3_IRQ(void);          /* Usart/uart_rx.c: store received byte */
+void APP_UART7_IRQ(void);           /* Ble/hm11.c: HM-11 receive / send */
 void APP_DMA2_Stream1_IRQ(void);    /* Matrix/matrix.c: frame-end resync */
 
 /* Run from the FreeRTOS default task (Core/Src/freertos.c). */

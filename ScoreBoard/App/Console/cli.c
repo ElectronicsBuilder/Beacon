@@ -1,5 +1,5 @@
 /*
- * cli.c - command line console on USART3. See cli.h.
+ * cli.c - command line console on USART3 and BLE. See cli.h.
  */
 #include "cli.h"
 #include "Ez_USART.h"
@@ -16,34 +16,65 @@
 
 typedef enum { IN_LINE, IN_FRAME, IN_KEYS } InputMode;
 
+typedef struct {
+  CliWriter write;
+  char      line[CLI_LINE_MAX];
+  size_t    line_len;
+  char      last_line[CLI_LINE_MAX];  /* Up-arrow recall */
+  InputMode input_mode;
+  int       machine;                  /* 1 = no echo / prompt */
+  int       esc_state;                /* 0, 1 = ESC seen, 2 = ESC [ seen */
+  char      prev_char;
+  int       frame_for_game;           /* legacy frame goes to the ping-pong game */
+} Port;
+
 static const CliCommand *tables[CLI_MAX_TABLES];
 static size_t table_sizes[CLI_MAX_TABLES];
 static size_t table_count;
 
-static char line[CLI_LINE_MAX];
-static size_t line_len;
-static char last_line[CLI_LINE_MAX];   /* Up-arrow recall */
-static InputMode input_mode = IN_LINE;
-static int machine;                    /* 1 = no echo / prompt */
-static int esc_state;                  /* 0, 1 = ESC seen, 2 = ESC [ seen */
-static char prev_char;
-static int frame_for_game;             /* legacy frame goes to the ping-pong game */
+static void P_SerialWrite(const char *s, size_t len);
+static Port ports[CLI_PORT_COUNT] = {
+  [CLI_PORT_SERIAL] = { .write = P_SerialWrite },   /* from boot: early log lines */
+};
+static Port *cur = &ports[CLI_PORT_SERIAL];   /* port of the command being run */
 static char error_text[96];
 static int executing;                  /* a command is running: no prompt redraw */
 
+static void P_SerialWrite(const char *s, size_t len)
+{
+  (void)len;
+  USART_puts(USART3, (char *)s);
+}
+
+static void P_WriteTo(Port *p, const char *s)
+{
+  if (p->write != NULL) p->write(s, strlen(s));
+}
+
 static void P_Write(const char *s)
 {
-  USART_puts(USART3, (char *)s);
+  P_WriteTo(cur, s);
+}
+
+static void P_PutC(char c)
+{
+  char s[2] = { c, '\0' };
+  P_Write(s);
+}
+
+static void P_PromptOf(Port *p)
+{
+  if (!p->machine && p->input_mode == IN_LINE && !(executing && p == cur))
+  {
+    P_WriteTo(p, CLI_PROMPT);
+    p->line[p->line_len] = '\0';
+    P_WriteTo(p, p->line);
+  }
 }
 
 static void P_Prompt(void)
 {
-  if (!machine && input_mode == IN_LINE && !executing)
-  {
-    P_Write(CLI_PROMPT);
-    line[line_len] = '\0';
-    P_Write(line);
-  }
+  P_PromptOf(cur);
 }
 
 int Cli_Register(const CliCommand *table, size_t count)
@@ -53,6 +84,16 @@ int Cli_Register(const CliCommand *table, size_t count)
   table_sizes[table_count] = count;
   table_count++;
   return 0;
+}
+
+void Cli_SetWriter(CliPort port, CliWriter writer)
+{
+  if (port < CLI_PORT_COUNT) ports[port].write = writer;
+}
+
+CliPort Cli_CurrentPort(void)
+{
+  return (CliPort)(cur - ports);
 }
 
 void Cli_Printf(const char *fmt, ...)
@@ -75,25 +116,26 @@ int Cli_Error(const char *fmt, ...)
   return -1;
 }
 
-int Cli_IsMachine(void)      { return machine; }
-void Cli_SetMachine(int on)  { machine = on ? 1 : 0; }
+int Cli_IsMachine(void)      { return cur->machine; }
+void Cli_SetMachine(int on)  { cur->machine = on ? 1 : 0; }
 
 void Cli_EnterKeysMode(void)
 {
-  input_mode = IN_KEYS;
+  cur->input_mode = IN_KEYS;
 }
 
-void Cli_BeginAsyncOutput(void)
+void Cli_Log(const char *text)
 {
-  if (!machine && input_mode == IN_LINE && !executing)
+  for (int i = 0; i < CLI_PORT_COUNT; i++)
   {
-    P_Write("\r\x1b[K");      /* clear the prompt line */
+    Port *p = &ports[i];
+    if (p->write == NULL || p->machine) continue;     /* machine mode: replies only */
+    int typing = p->input_mode == IN_LINE && !(executing && p == cur);
+    if (typing) P_WriteTo(p, "\r\x1b[K");             /* clear the prompt line */
+    P_WriteTo(p, text);
+    P_WriteTo(p, "\r\n");
+    if (typing) P_PromptOf(p);                        /* prompt + partly typed command */
   }
-}
-
-void Cli_EndAsyncOutput(void)
-{
-  P_Prompt();                 /* redraw prompt + partly typed command */
 }
 
 static const CliCommand *P_Find(const char *name)
@@ -110,7 +152,7 @@ static const CliCommand *P_Find(const char *name)
 
 static void P_Execute(const char *command_line)
 {
-  static char text[CLI_LINE_MAX];   /* tokenized copy; 'line' is reused for the next input */
+  static char text[CLI_LINE_MAX];   /* tokenized copy; the line buffer is reused for the next input */
   char *argv[CLI_MAX_ARGS];
   strlcpy(text, command_line, sizeof text);
   int argc = Cli_Tokenize(text, argv, CLI_MAX_ARGS);
@@ -136,7 +178,6 @@ static void P_Execute(const char *command_line)
   }
 }
 
-/* help [command]: list all commands or show one */
 /* print a text with several lines (split at \n) */
 static void P_PrintLines(const char *text, const char *indent)
 {
@@ -217,30 +258,52 @@ static const CliCommand cli_builtin[] = {
 void Cli_Init(void)
 {
   Cli_Register(cli_builtin, sizeof cli_builtin / sizeof cli_builtin[0]);
-  if (!machine)
+  Cli_SetWriter(CLI_PORT_SERIAL, P_SerialWrite);
+  cur = &ports[CLI_PORT_SERIAL];
+  P_Write("\r\nType 'help' for commands.\r\n");
+  P_Prompt();
+}
+
+void Cli_PortConnected(CliPort port)
+{
+  if (port >= CLI_PORT_COUNT) return;
+  Port *p = &ports[port];
+  p->line_len = 0;
+  p->input_mode = IN_LINE;
+  p->esc_state = 0;
+  if (!p->machine)
   {
-    P_Write("\r\nType 'help' for commands.\r\n");
-    P_Prompt();
+    P_WriteTo(p, "\r\nScoreBoard console. Type 'help' for commands.\r\n");
+    P_PromptOf(p);
   }
 }
 
 static void P_Backspace(void)
 {
-  if (line_len > 0)
+  if (cur->line_len > 0)
   {
-    line_len--;
-    if (!machine) P_Write("\b \b");
+    cur->line_len--;
+    if (!cur->machine) P_Write("\b \b");
   }
 }
 
 void Cli_Input(char c)
 {
+  Cli_InputFrom(CLI_PORT_SERIAL, c);
+}
+
+void Cli_InputFrom(CliPort port, char c)
+{
+  if (port >= CLI_PORT_COUNT) return;
+  cur = &ports[port];
+  Port *p = cur;
+
   /* Single-key mode: every key goes to the original serial key handler */
-  if (input_mode == IN_KEYS)
+  if (p->input_mode == IN_KEYS)
   {
     if (c == 0x1B)   /* ESC */
     {
-      input_mode = IN_LINE;
+      p->input_mode = IN_LINE;
       P_Write("\r\n[console]\r\n");
       P_Prompt();
     }
@@ -256,31 +319,31 @@ void Cli_Input(char c)
   }
 
   /* Legacy frame: forward until the end character (ping-pong mode only) */
-  if (input_mode == IN_FRAME)
+  if (p->input_mode == IN_FRAME)
   {
-    if (frame_for_game) COMMAND_RECEIVER2(c);
-    if (!machine && c != '\r' && c != '\n') USART_putc(USART3, c);
+    if (p->frame_for_game) COMMAND_RECEIVER2(c);
+    if (!p->machine && c != '\r' && c != '\n') P_PutC(c);
     if (c == '#' || c == '>')
     {
-      input_mode = IN_LINE;
-      if (!machine) P_Write("\r\n");
-      Cli_Printf(frame_for_game ? "OK" : "ERR ping-pong mode not active");
+      p->input_mode = IN_LINE;
+      if (!p->machine) P_Write("\r\n");
+      Cli_Printf(p->frame_for_game ? "OK" : "ERR ping-pong mode not active");
       P_Prompt();
     }
     return;
   }
 
   /* ANSI escape sequences (arrow keys) */
-  if (esc_state == 1) { esc_state = (c == '[') ? 2 : 0; return; }
-  if (esc_state == 2)
+  if (p->esc_state == 1) { p->esc_state = (c == '[') ? 2 : 0; return; }
+  if (p->esc_state == 2)
   {
-    esc_state = 0;
-    if (c == 'A' && last_line[0] != '\0')   /* Up: recall last command */
+    p->esc_state = 0;
+    if (c == 'A' && p->last_line[0] != '\0')   /* Up: recall last command */
     {
-      while (line_len > 0) P_Backspace();
-      line_len = strlen(last_line);
-      memcpy(line, last_line, line_len + 1u);
-      if (!machine) P_Write(line);
+      while (p->line_len > 0) P_Backspace();
+      p->line_len = strlen(p->last_line);
+      memcpy(p->line, p->last_line, p->line_len + 1u);
+      if (!p->machine) P_Write(p->line);
     }
     return;
   }
@@ -288,19 +351,19 @@ void Cli_Input(char c)
   switch (c)
   {
     case 0x1B:                        /* ESC */
-      esc_state = 1;
+      p->esc_state = 1;
       break;
 
     case '\r':
     case '\n':
-      if (c == '\n' && prev_char == '\r') break;   /* CR LF counts once */
-      if (!machine) P_Write("\r\n");
-      line[line_len] = '\0';
-      if (line_len > 0)
+      if (c == '\n' && p->prev_char == '\r') break;   /* CR LF counts once */
+      if (!p->machine) P_Write("\r\n");
+      p->line[p->line_len] = '\0';
+      if (p->line_len > 0)
       {
-        memcpy(last_line, line, line_len + 1u);
-        line_len = 0;
-        P_Execute(last_line);
+        memcpy(p->last_line, p->line, p->line_len + 1u);
+        p->line_len = 0;
+        P_Execute(p->last_line);
       }
       P_Prompt();
       break;
@@ -311,25 +374,25 @@ void Cli_Input(char c)
       break;
 
     case 0x03:                        /* Ctrl-C */
-      line_len = 0;
-      if (!machine) P_Write("^C\r\n");
+      p->line_len = 0;
+      if (!p->machine) P_Write("^C\r\n");
       P_Prompt();
       break;
 
     default:
-      if ((c == '*' || c == '<') && line_len == 0)   /* legacy frame starts */
+      if ((c == '*' || c == '<') && p->line_len == 0)   /* legacy frame starts */
       {
-        input_mode = IN_FRAME;
-        frame_for_game = PingPong_IsActive();
-        if (frame_for_game) COMMAND_RECEIVER2(c);
-        if (!machine) USART_putc(USART3, c);
+        p->input_mode = IN_FRAME;
+        p->frame_for_game = PingPong_IsActive();
+        if (p->frame_for_game) COMMAND_RECEIVER2(c);
+        if (!p->machine) P_PutC(c);
       }
-      else if (c >= 0x20 && c < 0x7F && line_len < CLI_LINE_MAX - 1u)
+      else if (c >= 0x20 && c < 0x7F && p->line_len < CLI_LINE_MAX - 1u)
       {
-        line[line_len++] = c;
-        if (!machine) USART_putc(USART3, c);
+        p->line[p->line_len++] = c;
+        if (!p->machine) P_PutC(c);
       }
       break;
   }
-  prev_char = c;
+  p->prev_char = c;
 }

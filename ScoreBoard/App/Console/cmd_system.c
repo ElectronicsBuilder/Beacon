@@ -16,6 +16,7 @@
 #include "rtc_trim.h"
 #include "msg_store.h"
 #include "screen_layout.h"
+#include "hm11.h"
 #include "cmsis_os.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,6 +90,7 @@ static int P_Status(int argc, char **argv)
   Cli_Printf("brightness=%u", (unsigned)Matrix_GetBrightness());
   Cli_Printf("messages=%d/%d", MsgStore_Count(), MsgStore_Capacity());
   Cli_Printf("usb=%s", P_UsbState());
+  Cli_Printf("ble=%s", Ble_StateName());
   Cli_Printf("stack_free=%lu", (unsigned long)app_task_stack_free);
   return 0;
 }

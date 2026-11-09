@@ -1,9 +1,8 @@
 /*
- * log.c - leveled log output on the USART3 console.
+ * log.c - leveled log output on the consoles (USB serial, BLE).
  * Lines are "[L] text\r\n" with L = E/W/I/D. Called from the App task.
  */
 #include "log.h"
-#include "Ez_USART.h"
 #include "cli.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -24,8 +23,5 @@ void Log_Printf(LogLevel level, const char *fmt, ...)
   va_start(ap, fmt);
   vsnprintf(line + n, sizeof line - (size_t)n, fmt, ap);
   va_end(ap);
-  Cli_BeginAsyncOutput();     /* clear a half-typed console line */
-  USART_puts(USART3, line);
-  USART_puts(USART3, "\r\n");
-  Cli_EndAsyncOutput();       /* redraw the prompt and the typed text */
+  Cli_Log(line);              /* every console port, prompt kept intact */
 }

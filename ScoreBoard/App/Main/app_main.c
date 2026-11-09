@@ -33,6 +33,7 @@
 #include "countdown.h"
 #include "msg_store.h"
 #include "screen_layout.h"
+#include "hm11.h"
 #include "version.h"
 #include "cmsis_os.h"
 
@@ -147,7 +148,9 @@ void App_Init(void)
   CmdGame_Register();
   CmdTimer_Register();
   CmdMsg_Register();
+  CmdBle_Register();
   Cli_Init();
+  Ble_Init();                   // HM-11 Bluetooth: second console port
 }
 
 /*
@@ -170,6 +173,7 @@ void App_Run(void)
     }
     osDelayUntil(next);
     UartRx_Poll();
+    Ble_Poll();
     Mode_Key(UsbKbd_GetKey());
     Mode_Tick();
     if (loops % MATRIX_REFRESH_MS == 0u)
