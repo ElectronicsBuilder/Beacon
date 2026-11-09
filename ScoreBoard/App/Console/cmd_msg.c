@@ -159,8 +159,21 @@ static int P_Msg(int argc, char **argv)
 }
 
 static const CliCommand msg_commands[] = {
-  { "msg", "[list | add \"l1\" [\"l2\"] [colour] | del <id> | clear | show <id> | order seq|random | time <s> | gap <s> | ticker on|off [gap] | free]",
-           "message list (shown in Messages mode and the ticker)", P_Msg },
+  { "msg", "[list|add|del|...]", "message list", P_Msg,
+    "msg | msg list                list: id colour \"line 1\" \"line 2\", and the settings\n"
+    "msg add \"line 1\" [\"line 2\"] [colour]   add; up to 40 characters per line\n"
+    "     colour (last word): white red green blue yellow cyan magenta; default white\n"
+    "     e.g. msg add \"HAPPY\" \"NEW YEAR\" yellow\n"
+    "msg del <id> | msg clear      delete one / all\n"
+    "msg show <id>                 show it now (switches to Messages mode)\n"
+    "msg order seq|random          play order\n"
+    "msg time <1-60>               seconds a message that fits stays (long ones scroll once)\n"
+    "msg gap <1-250>               seconds the screen text stays before the ticker\n"
+    "                              shows a message\n"
+    "msg ticker on|off [gap]       messages on the ticker lines at all\n"
+    "msg free                      free places (32 messages)\n"
+    "Which screens show messages: screen <s> msgs all|none|<ids>.\n"
+    "Keyboard: F5 Messages mode (Enter adds, Del deletes), F12 menu." },
 };
 
 void CmdMsg_Register(void)

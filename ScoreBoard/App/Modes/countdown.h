@@ -44,5 +44,8 @@ int Timer_Elapsed(uint32_t *secs);
 /* After zero: scene, then hold or the end screen (see end_plan.h); saved */
 const EndPlan *Timer_EndPlan(void);
 void Timer_SetEndPlan(const EndPlan *p);
+/* Stop the scene and messages after zero: only 00:00:00 and the end text stay
+ * (until the countdown is set again). Returns -1 if the countdown is not at zero. */
+int Timer_DismissEnd(void);
 
 #endif

@@ -189,7 +189,7 @@ static int P_Keys(int argc, char **argv)
 {
   (void)argc; (void)argv;
   if (PingPong_IsActive())
-    Cli_Printf("single-key mode: a/b k/m score, s start, / | pause/resume; ESC to return");
+    Cli_Printf("single-key mode: a/b player 1 +1/-1, c/d player 2 +1/-1, s start, x save, / | pause/resume; ESC to return");
   else
     Cli_Printf("single-key mode: keys go to the %s mode; ESC to return", Mode_Current()->name);
   Cli_EnterKeysMode();
@@ -313,17 +313,55 @@ static int P_Reboot(int argc, char **argv)
 }
 
 static const CliCommand system_commands[] = {
-  { "info",   "",                         "firmware and hardware information",            P_Info },
-  { "status", "",                         "time, game, players, score, brightness, USB",  P_Status },
-  { "time",   "[YYYY-MM-DD] [HH:MM[:SS]] | trim on|off", "show or set the date/time; RTC accuracy trim", P_Time },
-  { "bright", "[5-100]",                  "show or set the matrix brightness (saved)",   P_Bright },
-  { "log",    "[error|warn|info|debug]",  "show or set the log level",                    P_Log },
-  { "echo",   "[on|off]",                 "off = machine mode (no echo/prompt)",          P_Echo },
-  { "mode",   "[name|number]",            "list the display modes or switch (saved)",    P_Mode },
-  { "screen", "[clock|countdown|countup|end] [msgs all|none|<ids> | <line> <item> | <line> bg <colour> | <i1> <i2> <i3> <i4>]",
-               "display lines: big time text ticker msg off, split top/bottom, background", P_Screen },
-  { "keys",   "",                         "single-key control of the mode (ESC to return)", P_Keys },
-  { "reboot", "",                         "restart the board",                            P_Reboot },
+  { "info", "", "firmware version and hardware", P_Info,
+    "info    firmware version, build date, MCU, matrix size, EEPROM state" },
+  { "status", "", "time, mode, game, messages, USB ...", P_Status,
+    "status  date/time, RTC trim (lsi_hz, rtc_trim), uptime, mode, game state,\n"
+    "        players, score, brightness, messages, USB keyboard, free stack" },
+  { "time", "[date] [time] | trim", "show or set the clock", P_Time,
+    "time                        show the date and time\n"
+    "time 2026-11-09 16:52[:30]  set date and time (24-hour clock)\n"
+    "time 16:52                  set the time only (seconds = 0)\n"
+    "time 2026-12-24             set the date only\n"
+    "time trim on|off            RTC accuracy: on = measured against the crystal\n"
+    "                            (default), off = CubeMX default (~2.5% slow here)\n"
+    "Keyboard: Clock mode (F2), T or Enter.\n"
+    "Note: with main power off (VBAT only) the date/time is kept but does not count." },
+  { "bright", "[5-100]", "matrix brightness (saved)", P_Bright,
+    "bright       show the brightness\n"
+    "bright 40    set it, 5..100 % (saved)\n"
+    "Keyboard: + / -, or F12 menu." },
+  { "log", "[level]", "log level", P_Log,
+    "log                          show the level\n"
+    "log error|warn|info|debug    show messages up to this level (default info)" },
+  { "echo", "[on|off]", "typing mode / machine mode", P_Echo,
+    "echo off    machine mode for scripts and the GUI: no echo, no prompt,\n"
+    "            every reply ends with OK or ERR <reason>\n"
+    "echo on     typing mode (default)" },
+  { "mode", "[name|number]", "display mode (saved)", P_Mode,
+    "mode            list the modes (* = current)\n"
+    "mode clock      switch by name, or by number: mode 2\n"
+    "Modes: 1 pingpong, 2 clock, 3 countdown, 4 countup, 5 messages.\n"
+    "The mode is saved and comes back after a reboot. Keyboard: F1..F5." },
+  { "screen", "[name] [...]", "what each display line shows", P_Screen,
+    "screen                            show all layouts (* = line not lit with 32 rows)\n"
+    "screen <s> <line> <item>          s: clock countdown countup end, line: 1..4\n"
+    "   items: big (HH:MM:SS 16 px)  time (HH:MM:SS 8 px)  text (date / label /\n"
+    "          end text)  ticker (text, messages take turns)  msg (messages)  off\n"
+    "   top/bottom splits a line in two 8 px rows: screen clock 3 time/text\n"
+    "screen <s> <i1> <i2> <i3> <i4>     all 4 lines: screen countdown ticker msg big msg\n"
+    "screen <s> <line> bg <colour>      background: black white red green blue yellow\n"
+    "                                  cyan magenta (lines 1-2: blue stays on, HW fault)\n"
+    "screen <s> msgs all|none|<ids>     messages on this screen: screen clock msgs none\n"
+    "The end screen is shown after a countdown (cd after then screen).\n"
+    "Lines 2 and 4 need the HUB75 E line (MATRIX_PANEL_ROWS=64)." },
+  { "keys", "", "single-key control (ESC back)", P_Keys,
+    "keys    every key goes to the display, like the 2016 serial remote.\n"
+    "        Ping-pong: a/b player 1 +1/-1, c/d player 2 +1/-1, s start, x save,\n"
+    "        / | pause/resume. Other modes: the keys of that mode (help keys).\n"
+    "        ESC returns to the console." },
+  { "reboot", "", "restart the board", P_Reboot,
+    "reboot  restart (settings, messages, countdown and time are kept)" },
 };
 
 void CmdSystem_Register(void)

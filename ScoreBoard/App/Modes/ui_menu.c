@@ -81,7 +81,7 @@ static void P_Draw(void)
     case ITEM_ORDER:  snprintf(value, sizeof value, "< %s >", v ? "RANDOM" : "IN ORDER"); break;
     case ITEM_SCENE:  snprintf(value, sizeof value, "< %s >", EndPlan_SceneName((SceneId)v)); break;
     case ITEM_SCENE_S:
-      if ((typed >= 0 ? typed : v) == 0) snprintf(value, sizeof value, "< NO END >");
+      if ((typed >= 0 ? typed : v) == 0) snprintf(value, sizeof value, "< INFINITE >");
       else snprintf(value, sizeof value, "< %d S >", typed >= 0 ? typed : v);
       break;
     case ITEM_THEN:   snprintf(value, sizeof value, "< %s >", v ? "END SCREEN" : "HOLD 0:00"); break;
@@ -167,6 +167,7 @@ int Menu_Key(uint8_t key)
     int v = P_Get(item);
     if (items[item].hi == 1) v = !v;                   /* on/off, order: toggle */
     else if (item == ITEM_SCENE) v = (v + (up ? 1 : SCENE_COUNT - 1)) % SCENE_COUNT;   /* wraps */
+    else if (item == ITEM_SCENE_S && !up && v == 0) v = items[item].hi;          /* below infinite: wrap */
     else v += up ? items[item].step : -items[item].step;
     P_Set(item, v);
   }

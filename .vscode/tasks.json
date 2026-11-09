@@ -35,25 +35,7 @@
         },
         {
             "label": "flash",
-            "detail": "Hot-plug + halt: no reset while programming, so the RTC keeps counting (under-reset flashing stops it for ~6 s)",
-            "type": "shell",
-            "command": "C:/ST/STM32CubeCLT_1.16.0/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe",
-            "args": [
-                "-c",
-                "port=SWD",
-                "mode=HOTPLUG",
-                "-halt",
-                "-w",
-                "build/Debug/ScoreBoard.elf",
-                "-v",
-                "-rst"
-            ],
-            "dependsOn": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "flash (under reset, recovery)",
-            "detail": "Use if the normal flash cannot connect (e.g. firmware stuck); the RTC loses the programming time",
+            "detail": "Under reset (reliable). The RTC stops while the MCU is held in reset (~6 s per flash); a normal reboot loses no time. Hot-plug flashing keeps the RTC running but its erase fails intermittently on this board.",
             "type": "shell",
             "command": "C:/ST/STM32CubeCLT_1.16.0/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe",
             "args": [

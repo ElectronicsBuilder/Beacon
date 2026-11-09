@@ -10,7 +10,8 @@
  *   cu start [YYYY-MM-DD] [HH:MM[:SS]]   count up from now or a date/time
  *   cu stop | cu resume | cu label "text" | cu clear
  *   cd after                         show what happens at zero
- *   cd after scene <fireworks|stars|confetti|snow|rainbow|none> [seconds, 0 = no end]
+ *   cd after scene <fireworks|stars|confetti|snow|rainbow|none> [seconds | inf]
+ *   cd dismiss                       stop the scene / messages at zero (keyboard C or Del)
  *   cd after then hold|screen        after the scene: 00:00:00 + end text, or the
  *                                    "end" screen (layout: screen end ...)
  *   cd after msgs all|none|<id> ...  messages on the end screen (= screen end msgs)
@@ -82,7 +83,7 @@ static void P_PrintAfter(void)
   if (p->scene == SCENE_NONE)
     Cli_Printf("after=no scene, then %s", EndPlan_ThenName((EndThen)p->then));
   else if (p->scene_s == 0u)
-    Cli_Printf("after=%s (no end)", EndPlan_SceneName((SceneId)p->scene));
+    Cli_Printf("after=%s infinite", EndPlan_SceneName((SceneId)p->scene));
   else
     Cli_Printf("after=%s %us, then %s", EndPlan_SceneName((SceneId)p->scene), (unsigned)p->scene_s,
                EndPlan_ThenName((EndThen)p->then));
@@ -100,8 +101,9 @@ static int P_After(int argc, char **argv)
     if (argc == 5)
     {
       char *end;
-      long v = strtol(argv[4], &end, 10);
-      if (*end != '\0' || v < 0 || v > 65535) return Cli_Error("seconds 0..65535 (0 = no end)");
+      long v = (strcmp(argv[4], "inf") == 0 || strcmp(argv[4], "infinite") == 0) ? 0 : strtol(argv[4], &end, 10);
+      if (v != 0 && (*end != '\0' || v < 0 || v > 65535)) return Cli_Error("seconds 1..65535, or inf");
+      if (v == 0 && strcmp(argv[4], "0") != 0 && strncmp(argv[4], "inf", 3) != 0) return Cli_Error("seconds 1..65535, or inf");
       p.scene_s = (uint16_t)v;
     }
   }
@@ -131,6 +133,12 @@ static int P_After(int argc, char **argv)
 static int P_Cd(int argc, char **argv)
 {
   if (argc >= 2 && strcmp(argv[1], "after") == 0) return P_After(argc, argv);
+  if (argc == 2 && strcmp(argv[1], "dismiss") == 0)
+  {
+    if (Timer_DismissEnd() != 0) return Cli_Error("the countdown is not at zero");
+    LOG_I("Countdown end show cleared");
+    return 0;
+  }
   const TimerConfig *c = Timer_Config();
   if (argc >= 2)
   {
@@ -219,10 +227,34 @@ static int P_Cu(int argc, char **argv)
 }
 
 static const CliCommand timer_commands[] = {
-  { "cd", "[set <date/time> | in <1h30m> | label <text> | end <text> | after ... | clear]",
-          "countdown to a date/time (shows it)", P_Cd },
-  { "cu", "[start [date/time] | stop | resume | label <text> | clear]",
-          "count up from now or a date/time (shows it)", P_Cu },
+  { "cd", "[set|in|after|...]", "countdown", P_Cd,
+    "cd                              show target, remaining, label, end text\n"
+    "cd set [YYYY-MM-DD] HH:MM[:SS]  count down to a date/time (today if no date)\n"
+    "cd in 1h30m                     count down for a duration: d h m s, e.g. 2d, 45s,\n"
+    "                                90 (= minutes)\n"
+    "cd label \"NEW YEAR\"             text with the days while counting (\"\" = none)\n"
+    "cd end \"HAPPY NEW YEAR\"         text at zero (\"\" = none)\n"
+    "cd after                        what happens at zero:\n"
+    "cd after scene <name> [s|inf]   fireworks stars confetti snow rainbow none;\n"
+    "                                s = seconds, inf = while the countdown is shown\n"
+    "cd after then hold|screen       after the scene: 00:00:00 + end text, or the\n"
+    "                                end screen (screen end ...)\n"
+    "cd after msgs all|none|<ids>    messages on the end screen\n"
+    "cd dismiss                      at zero: stop the scene and messages (keyboard C/Del)\n"
+    "cd clear                        remove the countdown\n"
+    "Setting it switches to Countdown mode. Keyboard: F3, T or Enter edits the end,\n"
+    "C or Del clears the end show;\n"
+    "F12 menu: end scene, scene time, after scene." },
+  { "cu", "[start|stop|...]", "count-up", P_Cu,
+    "cu                                  show start, elapsed, state, label\n"
+    "cu start                            count up from now\n"
+    "cu start [YYYY-MM-DD] [HH:MM[:SS]]  count up from a date/time (a future start\n"
+    "                                    shows STARTS hh:mm)\n"
+    "cu stop | cu resume                 pause / continue from the shown time\n"
+    "cu label \"SHIFT\"                    text with the time\n"
+    "cu clear                            remove the count-up\n"
+    "Starting it switches to Count-up mode. Keyboard: F4, T/Enter start time,\n"
+    "S stop/resume, R restart." },
 };
 
 void CmdTimer_Register(void)

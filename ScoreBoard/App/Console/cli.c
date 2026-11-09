@@ -137,31 +137,78 @@ static void P_Execute(const char *command_line)
 }
 
 /* help [command]: list all commands or show one */
+/* print a text with several lines (split at \n) */
+static void P_PrintLines(const char *text, const char *indent)
+{
+  char line[160];
+  while (*text)
+  {
+    size_t n = strcspn(text, "\n");
+    if (n >= sizeof line) n = sizeof line - 1u;
+    memcpy(line, text, n);
+    line[n] = '\0';
+    Cli_Printf("%s%s", indent, line);
+    text += n;
+    if (*text == '\n') text++;
+  }
+}
+
+static const char keys_help[] =
+  "USB keyboard (any mode):\n"
+  "  F1..F5     modes: 1 ping-pong, 2 clock, 3 countdown, 4 count-up, 5 messages\n"
+  "  F12        settings menu: Up/Down item, Left/Right or digits change, Enter/ESC close\n"
+  "             (message gap/time, ticker, order, countdown end scene, brightness)\n"
+  "  + / -      brightness\n"
+  "Clock:       T or Enter = set the date and time\n"
+  "Countdown:   T or Enter = set the end date/time, C or Del = clear the end show\n"
+  "Count-up:    T or Enter = set the start, S = stop/resume, R = restart now\n"
+  "Messages:    Left/Right = previous/next, Del = delete shown one,\n"
+  "             Enter = add (type line 1, Enter, optional line 2, Enter)\n"
+  "Editors:     digits overwrite, Up/Down change the field, Left/Right move,\n"
+  "             Backspace deletes (text), Enter saves, ESC cancels\n"
+  "Ping-pong:   a / k = select player 1 / 2, then add a point; z / m = remove a point\n"
+  "             s = start, ^ = screen sleep on, @ = sleep off, / and | = pause/resume\n"
+  "Console 'keys' mode (ping-pong): a/b player 1 +1/-1, c/d player 2 +1/-1, s start,\n"
+  "             x save, / | pause/resume, ESC back to the console";
+
+/* help [command | keys]: list commands or show one command */
 static int P_CmdHelp(int argc, char **argv)
 {
   if (argc > 1)
   {
+    if (strcmp(argv[1], "keys") == 0)
+    {
+      P_PrintLines(keys_help, "");
+      return 0;
+    }
     const CliCommand *cmd = P_Find(argv[1]);
-    if (cmd == NULL) return Cli_Error("unknown command '%s'", argv[1]);
-    Cli_Printf("%s %s", cmd->name, cmd->args);
-    Cli_Printf("  %s", cmd->help);
+    if (cmd == NULL) return Cli_Error("unknown command '%s' (type help)", argv[1]);
+    Cli_Printf("%s - %s", cmd->name, cmd->help);
+    if (cmd->usage != NULL) P_PrintLines(cmd->usage, "  ");
+    else Cli_Printf("  %s %s", cmd->name, cmd->args);
     return 0;
   }
+  Cli_Printf("Commands (help <command> for details and examples, help keys for the keyboard):");
   for (size_t t = 0; t < table_count; t++)
   {
     for (size_t i = 0; i < table_sizes[t]; i++)
     {
-      char left[48];
+      char left[40];
       snprintf(left, sizeof left, "%s %s", tables[t][i].name, tables[t][i].args);
-      Cli_Printf("  %-34s %s", left, tables[t][i].help);
+      Cli_Printf("  %-26s %s", left, tables[t][i].help);
     }
   }
-  Cli_Printf("  Lines starting with '*' or '<' are legacy frames, e.g. *gmHELLO#");
+  Cli_Printf("Typing: Backspace, Up = repeat last command, Ctrl-C = clear line,");
+  Cli_Printf("  \"quotes\" for text with spaces. Replies end with OK or ERR <reason>.");
+  Cli_Printf("Lines starting with '*' or '<' are 2016 frames, e.g. *n1BOB#");
   return 0;
 }
 
 static const CliCommand cli_builtin[] = {
-  { "help", "[command]", "list commands or show one command", P_CmdHelp },
+  { "help", "[command|keys]", "this list; details of a command; keyboard keys", P_CmdHelp,
+    "help              all commands\n"
+    "help <command>    details and examples, e.g. help screen\n"
+    "help keys         USB keyboard and single-key shortcuts" },
 };
 
 void Cli_Init(void)

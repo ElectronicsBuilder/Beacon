@@ -161,6 +161,7 @@ typedef enum { VIEW_NONE, VIEW_NORMAL, VIEW_SCENE, VIEW_END } View;
 static View view;
 static char since_big[12];              /* end screen: time since zero */
 static char end_text[TIMER_TEXT_MAX + 1];
+static uint32_t dismissed_target;       /* end show stopped for this target (C / Del / cd dismiss) */
 
 static void P_Update(void)
 {
@@ -230,7 +231,8 @@ static void P_Update(void)
     uint32_t since = now - cfg.cd_target;
     ClockCalc_FormatDuration(since, since_big, sizeof since_big);
     snprintf(end_text, sizeof end_text, "%s", cfg.cd_end[0] ? cfg.cd_end : cfg.cd_label);
-    if (EndPlan_Phase(&plan, since) == END_PHASE_SCENE) want = VIEW_SCENE;
+    if (dismissed_target == cfg.cd_target) want = VIEW_NORMAL;   /* cleared by the user */
+    else if (EndPlan_Phase(&plan, since) == END_PHASE_SCENE) want = VIEW_SCENE;
     else if (plan.then == END_THEN_SCREEN) want = VIEW_END;
   }
   if (want != view)
@@ -241,6 +243,10 @@ static void P_Update(void)
     if (view == VIEW_SCENE)    Scene_Start((SceneId)plan.scene, end_text);
     else if (view == VIEW_END) Bands_Enter(SCREEN_END);
     else                       Bands_Enter(countup ? SCREEN_COUNTUP : SCREEN_COUNTDOWN);
+    if (at_zero && dismissed_target == cfg.cd_target)
+    {
+      MsgStore_SetPlaylist(0);            /* cleared: no messages either */
+    }
   }
 }
 
@@ -260,6 +266,16 @@ static void P_Enter(void)
   poll_count = 0;
   was_running = -1;
   P_Redraw();
+}
+
+int Timer_DismissEnd(void)
+{
+  uint32_t secs;
+  if (Timer_Remaining(&secs) != 0 || secs != 0u) return -1;
+  dismissed_target = cfg.cd_target;
+  view = VIEW_NONE;                       /* redraw as the plain end view */
+  if (!countup && Mode_Current() == &mode_countdown) P_Update();
+  return 0;
 }
 
 static void P_EnterCountdown(void) { countup = 0; P_Enter(); }
@@ -333,6 +349,10 @@ static void P_Key(uint8_t key)
   {
     if (cfg.cu_stopped_at != 0u) Timer_ResumeCountup(); else Timer_StopCountup();
     P_Draw();
+  }
+  else if (!countup && (key == 'c' || key == 'C' || key == KB_DEL))
+  {
+    if (Timer_DismissEnd() == 0) LOG_I("Countdown end show cleared from the keyboard");
   }
   else if (countup && (key == 'r' || key == 'R') && P_Now(&now) == 0)
   {

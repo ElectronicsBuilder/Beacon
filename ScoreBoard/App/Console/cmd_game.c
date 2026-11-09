@@ -66,7 +66,11 @@ static int P_Game(int argc, char **argv)
 }
 
 static const CliCommand game_commands[] = {
-  { "game", "players | stats <id>", "list players, show a player's record", P_Game },
+  { "game", "players | stats <id>", "ping-pong players and records", P_Game,
+    "game players       the 11 players (id, name)\n"
+    "game stats <id>    a player's record: wins and best score against each other one\n"
+    "Playing: keyboard a / k select players and add points, z / m remove, s start\n"
+    "(help keys), or the console 'keys' mode." },
 };
 
 void CmdGame_Register(void)

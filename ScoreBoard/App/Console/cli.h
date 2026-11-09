@@ -27,6 +27,7 @@ typedef struct {
   const char *args;    /* argument summary for help, e.g. "[YYYY-MM-DD] [HH:MM:SS]" */
   const char *help;    /* one-line description */
   CliHandler  run;
+  const char *usage;   /* "help <command>": details and examples, lines split by \n */
 } CliCommand;
 
 void Cli_Init(void);
