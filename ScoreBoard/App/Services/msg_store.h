@@ -33,6 +33,10 @@ int  MsgStore_Sorted(uint8_t *ids);                /* ids in play order, returns
 int  MsgStore_Next(void);                          /* id to show next (order setting), 0 = none */
 int  MsgStore_Prev(void);
 void MsgStore_SetCurrent(int id);                  /* e.g. "msg show" */
+/* Limit MsgStore_Next/Prev to some messages (bit id-1 set), e.g. the
+ * countdown end screen; MSG_PLAYLIST_ALL = every message. */
+#define MSG_PLAYLIST_ALL 0xFFFFFFFFu
+void MsgStore_SetPlaylist(uint32_t mask);
 uint32_t MsgStore_Changes(void);                   /* increments on every change */
 
 #endif

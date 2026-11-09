@@ -71,12 +71,12 @@ int MsgQueue_Delete(MsgQueue *q, int slot)
   return 0;
 }
 
-int MsgQueue_Sorted(const MsgQueue *q, uint8_t *slots)
+static int P_SortedIn(const MsgQueue *q, uint8_t *slots, uint32_t mask)
 {
   int n = 0;
   for (int i = 0; i < q->slot_count; i++)
   {
-    if (q->slots[i].seq == 0u) continue;
+    if (q->slots[i].seq == 0u || (mask & (1uL << i)) == 0u) continue;
     int j = n++;
     while (j > 0 && q->slots[slots[j - 1]].seq > q->slots[i].seq)   /* insertion sort */
     {
@@ -97,10 +97,20 @@ static int P_Pos(const uint8_t *order, int n, int slot)
   return -1;
 }
 
+int MsgQueue_Sorted(const MsgQueue *q, uint8_t *slots)
+{
+  return P_SortedIn(q, slots, 0xFFFFFFFFu);
+}
+
 int MsgQueue_Next(MsgQueue *q, MsgOrder order, uint32_t rnd)
 {
+  return MsgQueue_NextIn(q, order, rnd, 0xFFFFFFFFu);
+}
+
+int MsgQueue_NextIn(MsgQueue *q, MsgOrder order, uint32_t rnd, uint32_t mask)
+{
   uint8_t list[MSG_MAX];
-  int n = MsgQueue_Sorted(q, list);
+  int n = P_SortedIn(q, list, mask);
   if (n == 0) return q->current = -1;
   int pos = P_Pos(list, n, q->current);
   if (order == MSG_ORDER_RANDOM && n > 1)

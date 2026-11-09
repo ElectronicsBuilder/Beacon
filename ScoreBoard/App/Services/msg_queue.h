@@ -41,6 +41,9 @@ int  MsgQueue_Sorted(const MsgQueue *q, uint8_t *slots);   /* slots in play orde
 /* Next / previous slot to show after 'current' (random: any other one,
  * using rnd); -1 = no messages. Sets current. */
 int  MsgQueue_Next(MsgQueue *q, MsgOrder order, uint32_t rnd);
+/* Same, only among the slots whose bit is set in mask (bit n = slot n);
+ * if none of those exist, -1. */
+int  MsgQueue_NextIn(MsgQueue *q, MsgOrder order, uint32_t rnd, uint32_t mask);
 int  MsgQueue_Prev(MsgQueue *q);
 /* true when the seq counter must be renumbered (MsgQueue_Renumber) */
 int  MsgQueue_NeedsRenumber(const MsgQueue *q);

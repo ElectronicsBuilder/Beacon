@@ -12,6 +12,7 @@
 #include "crc16.h"
 #include "msg_queue.h"
 #include "text_entry.h"
+#include "end_plan.h"
 
 static int failures, checks;
 
@@ -332,6 +333,38 @@ static void test_text_entry(void)
   CHECK(e.len == 0 && e.text[0] == '\0');
 }
 
+static void test_playlist_and_end_plan(void)
+{
+  MsgQueue_Init(&q, 6);
+  for (int i = 0; i < 6; i++) MsgQueue_Add(&q, "M", NULL, 0);
+  uint32_t mask = (1u << 1) | (1u << 4);         /* ids 2 and 5 */
+  CHECK(MsgQueue_NextIn(&q, MSG_ORDER_SEQ, 0, mask) == 1);
+  CHECK(MsgQueue_NextIn(&q, MSG_ORDER_SEQ, 0, mask) == 4);
+  CHECK(MsgQueue_NextIn(&q, MSG_ORDER_SEQ, 0, mask) == 1);
+  q.current = 0;                                 /* current outside the list: first of the list */
+  CHECK(MsgQueue_NextIn(&q, MSG_ORDER_SEQ, 0, mask) == 1);
+  for (uint32_t r = 0; r < 50; r++)
+  {
+    int n = MsgQueue_NextIn(&q, MSG_ORDER_RANDOM, r * 7919u, mask);
+    CHECK(n == 1 || n == 4);
+  }
+  CHECK(MsgQueue_NextIn(&q, MSG_ORDER_SEQ, 0, 1u << 20) == -1);   /* no such message */
+
+  EndPlan p = END_PLAN_DEFAULT;
+  CHECK(EndPlan_Phase(&p, 0) == END_PHASE_THEN);                  /* no scene */
+  p.scene = SCENE_FIREWORKS; p.scene_s = 30;
+  CHECK(EndPlan_Phase(&p, 0) == END_PHASE_SCENE);
+  CHECK(EndPlan_Phase(&p, 29) == END_PHASE_SCENE);
+  CHECK(EndPlan_Phase(&p, 30) == END_PHASE_THEN);
+  p.scene_s = 0;                                                  /* scene without end */
+  CHECK(EndPlan_Phase(&p, 1000000u) == END_PHASE_SCENE);
+  CHECK(EndPlan_SceneFind("snow") == SCENE_SNOW && EndPlan_SceneFind("x") < 0);
+  CHECK(EndPlan_ThenFind("screen") == END_THEN_SCREEN);
+  CHECK(strcmp(EndPlan_SceneName(SCENE_RAINBOW), "rainbow") == 0);
+  p.then = 7;
+  CHECK(!EndPlan_Valid(&p));
+}
+
 int main(void)
 {
   test_clock();
@@ -342,6 +375,7 @@ int main(void)
   test_crc16();
   test_msg_queue();
   test_text_entry();
+  test_playlist_and_end_plan();
   printf("%d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;
 }

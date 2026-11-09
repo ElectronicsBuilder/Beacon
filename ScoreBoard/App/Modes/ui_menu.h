@@ -3,7 +3,8 @@
  *
  * Up/Down choose the setting, Left/Right change it (or type a number),
  * Enter / ESC / F12 close it; changes are saved when it closes.
- * Settings: message gap, message time, ticker on/off, play order, brightness.
+ * Settings: message gap, message time, ticker on/off, play order, countdown
+ * end scene, scene time, after the scene (hold / end screen), brightness.
  */
 #ifndef APP_UI_MENU_H
 #define APP_UI_MENU_H

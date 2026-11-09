@@ -4,6 +4,7 @@
 #include "ui_menu.h"
 #include "msg_store.h"
 #include "settings.h"
+#include "countdown.h"
 #include "matrix.h"
 #include "layout.h"
 #include "FONT.h"
@@ -12,19 +13,24 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef enum { ITEM_GAP, ITEM_TIME, ITEM_TICKER, ITEM_ORDER, ITEM_BRIGHT, ITEM_COUNT } MenuItem;
+typedef enum { ITEM_GAP, ITEM_TIME, ITEM_TICKER, ITEM_ORDER, ITEM_SCENE, ITEM_SCENE_S, ITEM_THEN,
+               ITEM_BRIGHT, ITEM_COUNT } MenuItem;
 
 static const struct { const char *title; int lo, hi, step; } items[ITEM_COUNT] = {
   [ITEM_GAP]    = { "MESSAGE GAP",  1, 250, 1 },
   [ITEM_TIME]   = { "MESSAGE TIME", 1, 60,  1 },
   [ITEM_TICKER] = { "MSG TICKER",   0, 1,   1 },
   [ITEM_ORDER]  = { "MSG ORDER",    0, 1,   1 },
+  [ITEM_SCENE]  = { "END SCENE",    0, SCENE_COUNT - 1, 1 },
+  [ITEM_SCENE_S]= { "SCENE TIME",   0, 600, 5 },
+  [ITEM_THEN]   = { "AFTER SCENE",  0, 1,   1 },
   [ITEM_BRIGHT] = { "BRIGHTNESS",   MATRIX_BRIGHTNESS_MIN, 100, 5 },
 };
 
 static uint8_t active;
 static int item;
-static MsgConfig cfg;              /* edited copy, saved on close */
+static MsgConfig cfg;              /* edited copies, saved on close */
+static EndPlan plan;
 static int typed;                  /* number being typed, -1 = none */
 
 static int P_Get(int i)
@@ -35,6 +41,9 @@ static int P_Get(int i)
     case ITEM_TIME:   return cfg.show_s;
     case ITEM_TICKER: return cfg.ticker;
     case ITEM_ORDER:  return cfg.order;
+    case ITEM_SCENE:  return plan.scene;
+    case ITEM_SCENE_S:return plan.scene_s;
+    case ITEM_THEN:   return plan.then;
     default:          return Matrix_GetBrightness();
   }
 }
@@ -49,6 +58,9 @@ static void P_Set(int i, int v)
     case ITEM_TIME:   cfg.show_s = (uint8_t)v; break;
     case ITEM_TICKER: cfg.ticker = (uint8_t)v; break;
     case ITEM_ORDER:  cfg.order = (uint8_t)v; break;
+    case ITEM_SCENE:  plan.scene = (uint8_t)v; break;
+    case ITEM_SCENE_S:plan.scene_s = (uint16_t)v; break;
+    case ITEM_THEN:   plan.then = (uint8_t)v; break;
     default:
       Matrix_SetBrightness((uint8_t)v);            /* visible right away */
       Settings_BrightnessChanged();
@@ -67,6 +79,12 @@ static void P_Draw(void)
     case ITEM_TIME:   snprintf(value, sizeof value, "< %d S >", typed >= 0 ? typed : v); break;
     case ITEM_TICKER: snprintf(value, sizeof value, "< %s >", v ? "ON" : "OFF"); break;
     case ITEM_ORDER:  snprintf(value, sizeof value, "< %s >", v ? "RANDOM" : "IN ORDER"); break;
+    case ITEM_SCENE:  snprintf(value, sizeof value, "< %s >", EndPlan_SceneName((SceneId)v)); break;
+    case ITEM_SCENE_S:
+      if ((typed >= 0 ? typed : v) == 0) snprintf(value, sizeof value, "< NO END >");
+      else snprintf(value, sizeof value, "< %d S >", typed >= 0 ? typed : v);
+      break;
+    case ITEM_THEN:   snprintf(value, sizeof value, "< %s >", v ? "END SCREEN" : "HOLD 0:00"); break;
     default:          snprintf(value, sizeof value, "< %d %% >", typed >= 0 ? typed : v); break;
   }
   Matrix_SetTextColor(MTX_C_WHITE);
@@ -91,6 +109,7 @@ static void P_Commit(void)
 void Menu_Open(void)
 {
   cfg = *MsgStore_Config();
+  plan = *Timer_EndPlan();
   active = 1;
   item = ITEM_GAP;
   typed = -1;
@@ -118,10 +137,16 @@ int Menu_Key(uint8_t key)
       LOG_I("Settings: gap %u s, time %u s, ticker %s, order %s", cfg.gap_s, cfg.show_s,
             cfg.ticker ? "on" : "off", cfg.order ? "random" : "seq");
     }
+    if (memcmp(Timer_EndPlan(), &plan, sizeof plan) != 0)
+    {
+      Timer_SetEndPlan(&plan);
+      LOG_I("Countdown end: %s %u s, then %s", EndPlan_SceneName((SceneId)plan.scene),
+            (unsigned)plan.scene_s, EndPlan_ThenName((EndThen)plan.then));
+    }
     calculateClearImage();
     return 1;
   }
-  if (key >= '0' && key <= '9' && items[item].hi > 1)
+  if (key >= '0' && key <= '9' && items[item].hi > 1 && item != ITEM_SCENE)
   {
     int t = (typed < 0 ? 0 : typed) * 10 + (key - '0');
     typed = (t > items[item].hi) ? key - '0' : t;     /* too big: start again */
@@ -141,6 +166,7 @@ int Menu_Key(uint8_t key)
     int up = (key == KB_RIGHT || key == '+' || key == '=');
     int v = P_Get(item);
     if (items[item].hi == 1) v = !v;                   /* on/off, order: toggle */
+    else if (item == ITEM_SCENE) v = (v + (up ? 1 : SCENE_COUNT - 1)) % SCENE_COUNT;   /* wraps */
     else v += up ? items[item].step : -items[item].step;
     P_Set(item, v);
   }

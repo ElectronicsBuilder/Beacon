@@ -11,6 +11,7 @@
 #define APP_COUNTDOWN_H
 
 #include <stdint.h>
+#include "end_plan.h"
 
 #define TIMER_TEXT_MAX 48
 
@@ -39,5 +40,9 @@ void Timer_SetCountupLabel(const char *text);
  * the clock is not set. */
 int Timer_Remaining(uint32_t *secs);      /* 0 once the target has passed */
 int Timer_Elapsed(uint32_t *secs);
+
+/* After zero: scene, then hold or the end screen (see end_plan.h); saved */
+const EndPlan *Timer_EndPlan(void);
+void Timer_SetEndPlan(const EndPlan *p);
 
 #endif

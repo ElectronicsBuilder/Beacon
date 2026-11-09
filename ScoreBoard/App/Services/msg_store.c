@@ -18,6 +18,7 @@ static MsgQueue queue;
 static MsgConfig cfg = { MSG_ORDER_SEQ, 5, 1, 20 };
 static uint32_t eeprom_size;
 static uint32_t changes;
+static uint32_t playlist = MSG_PLAYLIST_ALL;
 
 static uint16_t P_SlotAddr(int slot)
 {
@@ -140,12 +141,17 @@ int MsgStore_Next(void)
 {
   uint32_t rnd = 0;
   if (cfg.order == MSG_ORDER_RANDOM) HAL_RNG_GenerateRandomNumber(&hrng, &rnd);
-  return MsgQueue_Next(&queue, (MsgOrder)cfg.order, rnd) + 1;
+  return MsgQueue_NextIn(&queue, (MsgOrder)cfg.order, rnd, playlist) + 1;
 }
 
 int MsgStore_Prev(void)
 {
   return MsgQueue_Prev(&queue) + 1;
+}
+
+void MsgStore_SetPlaylist(uint32_t mask)
+{
+  playlist = mask;
 }
 
 void MsgStore_SetCurrent(int id)

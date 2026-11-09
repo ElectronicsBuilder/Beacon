@@ -11,10 +11,12 @@
 #define LAYOUT_DEFAULT {{ { BAND_TICKER, BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK }, \
                           { BAND_BIG,    BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK } }}
 
-static ScreenLayout layouts[SCREEN_COUNT] = { LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_DEFAULT };
+#define LAYOUT_END     {{ { BAND_TEXT, BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK },                           { BAND_MSG,  BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK } }}
+
+static ScreenLayout layouts[SCREEN_COUNT] = { LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_END };
 static uint32_t changes;
 
-static const char *const screen_names[SCREEN_COUNT] = { "clock", "countdown", "countup" };
+static const char *const screen_names[SCREEN_COUNT] = { "clock", "countdown", "countup", "end" };
 static const char *const kind_names[BAND_KIND_COUNT] = { "off", "big", "text", "ticker", "msg", "time" };
 
 static int P_Valid(const BandCfg *b)

@@ -239,7 +239,7 @@ static int P_Screen(int argc, char **argv)
   {
     int s = Screen_Find(argv[1]);
     uint8_t top, bottom;
-    if (s < 0) return Cli_Error("screen: clock, countdown or countup");
+    if (s < 0) return Cli_Error("screen: clock, countdown, countup or end");
     if (argc == 4 || argc == 5)
     {
       char *end;
@@ -301,7 +301,7 @@ static const CliCommand system_commands[] = {
   { "log",    "[error|warn|info|debug]",  "show or set the log level",                    P_Log },
   { "echo",   "[on|off]",                 "off = machine mode (no echo/prompt)",          P_Echo },
   { "mode",   "[name|number]",            "list the display modes or switch (saved)",    P_Mode },
-  { "screen", "[clock|countdown|countup] [<line> <item> | <line> bg <colour> | <i1> <i2> <i3> <i4>]",
+  { "screen", "[clock|countdown|countup|end] [<line> <item> | <line> bg <colour> | <i1> <i2> <i3> <i4>]",
                "display lines: big time text ticker msg off, split top/bottom, background", P_Screen },
   { "keys",   "",                         "single-key control of the mode (ESC to return)", P_Keys },
   { "reboot", "",                         "restart the board",                            P_Reboot },

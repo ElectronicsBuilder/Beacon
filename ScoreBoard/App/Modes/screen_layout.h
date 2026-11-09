@@ -13,6 +13,9 @@
  *   off     nothing
  * Each line also has a background colour (black = none).
  *
+ * The "end" screen is shown after a countdown reaches zero ("cd after then
+ * screen"): text = the end text, big/time = time since zero.
+ *
  * With MATRIX_PANEL_ROWS 32 (E line not wired) only lines 1 and 3 light up;
  * lines 2 and 4 keep their setting for when E is wired.
  * Saved in the EEPROM (record at 0x0F40).
@@ -27,7 +30,7 @@
 #define BAND_NONE    0xFFu          /* bottom of a line that is not split */
 
 typedef enum { BAND_OFF, BAND_BIG, BAND_TEXT, BAND_TICKER, BAND_MSG, BAND_TIME, BAND_KIND_COUNT } BandKind;
-typedef enum { SCREEN_CLOCK, SCREEN_COUNTDOWN, SCREEN_COUNTUP, SCREEN_COUNT } ScreenId;
+typedef enum { SCREEN_CLOCK, SCREEN_COUNTDOWN, SCREEN_COUNTUP, SCREEN_END, SCREEN_COUNT } ScreenId;
 
 typedef struct {
   uint8_t top;                      /* BandKind (whole line when bottom is BAND_NONE) */

@@ -9,6 +9,11 @@
  *   cu                               show the count-up
  *   cu start [YYYY-MM-DD] [HH:MM[:SS]]   count up from now or a date/time
  *   cu stop | cu resume | cu label "text" | cu clear
+ *   cd after                         show what happens at zero
+ *   cd after scene <fireworks|stars|confetti|snow|rainbow|none> [seconds, 0 = no end]
+ *   cd after then hold|screen        after the scene: 00:00:00 + end text, or the
+ *                                    "end" screen (layout: screen end ...)
+ *   cd after msgs all | <id> ...     messages on the end screen
  * Setting a countdown or count-up also shows it (switches the mode).
  */
 #include "commands.h"
@@ -18,6 +23,8 @@
 #include "mode.h"
 #include "clock.h"
 #include "clock_calc.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static void P_PrintTime(const char *name, uint32_t secs)
@@ -66,8 +73,79 @@ static int P_ParseWhen(int argc, char **argv, uint32_t *secs)
   return 0;
 }
 
+static void P_PrintAfter(void)
+{
+  const EndPlan *p = Timer_EndPlan();
+  char ids[100] = "all";
+  if (p->msg_mask != 0xFFFFFFFFu)
+  {
+    int n = 0;
+    ids[0] = '\0';
+    for (int i = 0; i < 32; i++)
+    {
+      if (p->msg_mask & (1uL << i)) n += snprintf(ids + n, sizeof ids - (size_t)n, "%s%d", n ? " " : "", i + 1);
+    }
+    if (n == 0) snprintf(ids, sizeof ids, "none");
+  }
+  if (p->scene == SCENE_NONE)
+    Cli_Printf("after=no scene, then %s", EndPlan_ThenName((EndThen)p->then));
+  else if (p->scene_s == 0u)
+    Cli_Printf("after=%s (no end)", EndPlan_SceneName((SceneId)p->scene));
+  else
+    Cli_Printf("after=%s %us, then %s", EndPlan_SceneName((SceneId)p->scene), (unsigned)p->scene_s,
+               EndPlan_ThenName((EndThen)p->then));
+  Cli_Printf("end_msgs=%s", ids);
+}
+
+static int P_After(int argc, char **argv)
+{
+  EndPlan p = *Timer_EndPlan();
+  if (argc >= 4 && strcmp(argv[2], "scene") == 0 && argc <= 5)
+  {
+    int s = EndPlan_SceneFind(argv[3]);
+    if (s < 0) return Cli_Error("scenes: fireworks stars confetti snow rainbow none");
+    p.scene = (uint8_t)s;
+    if (argc == 5)
+    {
+      char *end;
+      long v = strtol(argv[4], &end, 10);
+      if (*end != '\0' || v < 0 || v > 65535) return Cli_Error("seconds 0..65535 (0 = no end)");
+      p.scene_s = (uint16_t)v;
+    }
+  }
+  else if (argc == 4 && strcmp(argv[2], "then") == 0)
+  {
+    int t = EndPlan_ThenFind(argv[3]);
+    if (t < 0) return Cli_Error("then: hold or screen");
+    p.then = (uint8_t)t;
+  }
+  else if (argc >= 4 && strcmp(argv[2], "msgs") == 0)
+  {
+    if (strcmp(argv[3], "all") == 0) p.msg_mask = 0xFFFFFFFFu;
+    else
+    {
+      p.msg_mask = 0;
+      for (int i = 3; i < argc; i++)
+      {
+        char *end;
+        long id = strtol(argv[i], &end, 10);
+        if (*end != '\0' || id < 1 || id > 32) return Cli_Error("message ids 1..32, or all");
+        p.msg_mask |= 1uL << (id - 1);
+      }
+    }
+  }
+  else if (argc != 2)
+  {
+    return Cli_Error("usage: cd after [scene <name> [s] | then hold|screen | msgs all|<id>...]");
+  }
+  if (argc != 2) Timer_SetEndPlan(&p);
+  P_PrintAfter();
+  return 0;
+}
+
 static int P_Cd(int argc, char **argv)
 {
+  if (argc >= 2 && strcmp(argv[1], "after") == 0) return P_After(argc, argv);
   const TimerConfig *c = Timer_Config();
   if (argc >= 2)
   {
@@ -156,7 +234,7 @@ static int P_Cu(int argc, char **argv)
 }
 
 static const CliCommand timer_commands[] = {
-  { "cd", "[set <date/time> | in <1h30m> | label <text> | end <text> | clear]",
+  { "cd", "[set <date/time> | in <1h30m> | label <text> | end <text> | after ... | clear]",
           "countdown to a date/time (shows it)", P_Cd },
   { "cu", "[start [date/time] | stop | resume | label <text> | clear]",
           "count up from now or a date/time (shows it)", P_Cu },

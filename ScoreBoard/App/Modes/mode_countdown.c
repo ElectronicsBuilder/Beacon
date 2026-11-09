@@ -8,6 +8,8 @@
 #include "mode.h"
 #include "mode_ui.h"
 #include "ui_bands.h"
+#include "scenes.h"
+#include "msg_store.h"
 #include "clock.h"
 #include "clock_calc.h"
 #include "ee_record.h"
@@ -23,7 +25,9 @@
 /* ------------------------------------------------------------ settings */
 
 static TimerConfig cfg;
+static EndPlan plan = END_PLAN_DEFAULT;
 static uint8_t save_pending;
+static uint8_t plan_save_pending;
 static uint32_t save_at_ms;
 
 static void P_Changed(void)
@@ -45,6 +49,21 @@ void Timer_Load(void)
     memset(&cfg, 0, sizeof cfg);
   }
   cfg.cd_label[TIMER_TEXT_MAX] = cfg.cd_end[TIMER_TEXT_MAX] = cfg.cu_label[TIMER_TEXT_MAX] = '\0';
+  EndPlan p;
+  if (EeRecord_Load(EE_RECORD_ENDPLAN_ADDR, &p, sizeof p) == 0 && EndPlan_Valid(&p))
+  {
+    plan = p;
+  }
+}
+
+const EndPlan *Timer_EndPlan(void) { return &plan; }
+
+void Timer_SetEndPlan(const EndPlan *p)
+{
+  if (!EndPlan_Valid(p)) return;
+  plan = *p;
+  plan_save_pending = 1;
+  P_Changed();
 }
 
 void Timer_Poll(void)
@@ -52,6 +71,14 @@ void Timer_Poll(void)
   if (save_pending && (int32_t)(osKernelGetTickCount() - save_at_ms) >= 0)
   {
     save_pending = 0;
+    if (plan_save_pending)
+    {
+      plan_save_pending = 0;
+      if (EeRecord_Save(EE_RECORD_ENDPLAN_ADDR, &plan, sizeof plan) != 0)
+      {
+        LOG_E("Countdown end plan: EEPROM write failed");
+      }
+    }
     if (EeRecord_Save(EE_RECORD_TIMER_ADDR, &cfg, sizeof cfg) != 0)
     {
       LOG_E("Countdown settings: EEPROM write failed");
@@ -129,6 +156,12 @@ static uint8_t at_zero;                 /* countdown ended: no messages over the
 static uint8_t countup;                 /* which of the two modes is active */
 static int8_t was_running = -1;         /* countdown: for the "finished" log */
 
+/* what the countdown screen shows; after zero it follows the end plan */
+typedef enum { VIEW_NONE, VIEW_NORMAL, VIEW_SCENE, VIEW_END } View;
+static View view;
+static char since_big[12];              /* end screen: time since zero */
+static char end_text[TIMER_TEXT_MAX + 1];
+
 static void P_Update(void)
 {
   char *text = own_text;
@@ -188,13 +221,33 @@ static void P_Update(void)
     }
   }
   at_zero = (uint8_t)(!countup && big_color == RED);
+
+  /* after zero: scene, then hold or the end screen */
+  View want = VIEW_NORMAL;
+  uint32_t now;
+  if (at_zero && P_Now(&now) == 0)
+  {
+    uint32_t since = now - cfg.cd_target;
+    ClockCalc_FormatDuration(since, since_big, sizeof since_big);
+    snprintf(end_text, sizeof end_text, "%s", cfg.cd_end[0] ? cfg.cd_end : cfg.cd_label);
+    if (EndPlan_Phase(&plan, since) == END_PHASE_SCENE) want = VIEW_SCENE;
+    else if (plan.then == END_THEN_SCREEN) want = VIEW_END;
+  }
+  if (want != view)
+  {
+    view = want;
+    calculateClearImage();
+    MsgStore_SetPlaylist(view == VIEW_END ? plan.msg_mask : MSG_PLAYLIST_ALL);
+    if (view == VIEW_SCENE)    Scene_Start((SceneId)plan.scene, end_text);
+    else if (view == VIEW_END) Bands_Enter(SCREEN_END);
+    else                       Bands_Enter(countup ? SCREEN_COUNTUP : SCREEN_COUNTDOWN);
+  }
 }
 
 static void P_Redraw(void)
 {
-  calculateClearImage();
+  view = VIEW_NONE;                     /* P_Update draws the right view */
   P_Update();
-  Bands_Enter(countup ? SCREEN_COUNTUP : SCREEN_COUNTDOWN);
 }
 
 static void P_Draw(void)
@@ -215,6 +268,7 @@ static void P_EnterCountup(void)   { countup = 1; P_Enter(); }
 static void P_Exit(void)
 {
   TimeEdit_Stop();
+  MsgStore_SetPlaylist(MSG_PLAYLIST_ALL);
 }
 
 static void P_Tick(void)
@@ -229,7 +283,9 @@ static void P_Tick(void)
     poll_count = 0;
     P_Update();
   }
-  Bands_Tick(big, big_color, own_text, !at_zero);
+  if (view == VIEW_SCENE)    Scene_Tick();
+  else if (view == VIEW_END) Bands_Tick(since_big, WHITE, end_text, 1);
+  else                       Bands_Tick(big, big_color, own_text, !at_zero);
 }
 
 static void P_Key(uint8_t key)
