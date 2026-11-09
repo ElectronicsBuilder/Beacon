@@ -13,7 +13,7 @@
  *   cd after scene <fireworks|stars|confetti|snow|rainbow|none> [seconds, 0 = no end]
  *   cd after then hold|screen        after the scene: 00:00:00 + end text, or the
  *                                    "end" screen (layout: screen end ...)
- *   cd after msgs all | <id> ...     messages on the end screen
+ *   cd after msgs all|none|<id> ...  messages on the end screen (= screen end msgs)
  * Setting a countdown or count-up also shows it (switches the mode).
  */
 #include "commands.h"
@@ -23,6 +23,7 @@
 #include "mode.h"
 #include "clock.h"
 #include "clock_calc.h"
+#include "screen_layout.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,17 +77,8 @@ static int P_ParseWhen(int argc, char **argv, uint32_t *secs)
 static void P_PrintAfter(void)
 {
   const EndPlan *p = Timer_EndPlan();
-  char ids[100] = "all";
-  if (p->msg_mask != 0xFFFFFFFFu)
-  {
-    int n = 0;
-    ids[0] = '\0';
-    for (int i = 0; i < 32; i++)
-    {
-      if (p->msg_mask & (1uL << i)) n += snprintf(ids + n, sizeof ids - (size_t)n, "%s%d", n ? " " : "", i + 1);
-    }
-    if (n == 0) snprintf(ids, sizeof ids, "none");
-  }
+  char ids[100];
+  Screen_FormatMessages(Screen_Layout(SCREEN_END)->msg_mask, ids, sizeof ids);
   if (p->scene == SCENE_NONE)
     Cli_Printf("after=no scene, then %s", EndPlan_ThenName((EndThen)p->then));
   else if (p->scene_s == 0u)
@@ -119,20 +111,13 @@ static int P_After(int argc, char **argv)
     if (t < 0) return Cli_Error("then: hold or screen");
     p.then = (uint8_t)t;
   }
-  else if (argc >= 4 && strcmp(argv[2], "msgs") == 0)
+  else if (argc >= 4 && strcmp(argv[2], "msgs") == 0)     /* = screen end msgs ... */
   {
-    if (strcmp(argv[3], "all") == 0) p.msg_mask = 0xFFFFFFFFu;
-    else
-    {
-      p.msg_mask = 0;
-      for (int i = 3; i < argc; i++)
-      {
-        char *end;
-        long id = strtol(argv[i], &end, 10);
-        if (*end != '\0' || id < 1 || id > 32) return Cli_Error("message ids 1..32, or all");
-        p.msg_mask |= 1uL << (id - 1);
-      }
-    }
+    uint32_t mask;
+    if (Screen_ParseMessages(argc - 3, argv + 3, &mask) != 0) return Cli_Error("messages: all, none or ids 1..32");
+    Screen_SetMessages(SCREEN_END, mask);
+    P_PrintAfter();
+    return 0;
   }
   else if (argc != 2)
   {

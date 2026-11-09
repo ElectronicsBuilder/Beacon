@@ -100,7 +100,7 @@ static void P_MsgTick(int b, Slot *s)
       return;
     }
   }
-  if (s->msg_id == 0 && MsgStore_Count() > 0)
+  if (s->msg_id == 0 && MsgStore_PlaylistCount() > 0)
   {
     P_ShowMsg(b, s, MsgStore_Next());
     return;
@@ -110,7 +110,7 @@ static void P_MsgTick(int b, Slot *s)
   s->msg_ms++;
   int done = s->msg_ms >= (uint32_t)c->show_s * 1000u &&
              (!s->a.scrolling || s->a.passes >= 1u) && (!s->b.scrolling || s->b.passes >= 1u);
-  if (s->msg_id != 0 && done && MsgStore_Count() > 1)
+  if (s->msg_id != 0 && done && MsgStore_PlaylistCount() > 1)
   {
     P_ShowMsg(b, s, MsgStore_Next());
   }
@@ -137,6 +137,7 @@ void Bands_Enter(ScreenId sc)
   screen = sc;
   layout_changes = Screen_Changes();
   const ScreenLayout *l = Screen_Layout(sc);
+  MsgStore_SetPlaylist(l->msg_mask);            /* this screen's messages (none = 0) */
   for (int b = 0; b < SCREEN_BANDS; b++)
   {
     Band *band = &bands[b];

@@ -11,14 +11,15 @@
  *   msg     messages; full height: two-line messages use both rows,
  *           in a split line: one row (both lines joined)
  *   off     nothing
- * Each line also has a background colour (black = none).
+ * Each line also has a background colour (black = none). Each screen has
+ * its own set of messages: all, none or some ids ("screen clock msgs none").
  *
  * The "end" screen is shown after a countdown reaches zero ("cd after then
  * screen"): text = the end text, big/time = time since zero.
  *
  * With MATRIX_PANEL_ROWS 32 (E line not wired) only lines 1 and 3 light up;
  * lines 2 and 4 keep their setting for when E is wired.
- * Saved in the EEPROM (record at 0x0F40).
+ * Saved in the EEPROM (record at 0x0F10).
  */
 #ifndef APP_SCREEN_LAYOUT_H
 #define APP_SCREEN_LAYOUT_H
@@ -39,13 +40,20 @@ typedef struct {
 } BandCfg;
 
 typedef struct {
-  BandCfg band[SCREEN_BANDS];       /* top line first */
+  BandCfg  band[SCREEN_BANDS];      /* top line first */
+  uint32_t msg_mask;                /* messages this screen shows (bit id-1); 0 = none */
 } ScreenLayout;
+
+#define SCREEN_MSGS_ALL 0xFFFFFFFFu
 
 void Screen_Load(void);                                 /* at boot */
 const ScreenLayout *Screen_Layout(ScreenId s);
 int  Screen_SetBand(ScreenId s, int band, uint8_t top, uint8_t bottom);   /* band 0..3; saved; 0 = ok */
 int  Screen_SetBackground(ScreenId s, int band, uint8_t color);           /* saved; 0 = ok */
+int  Screen_SetMessages(ScreenId s, uint32_t mask);                        /* saved; 0 = ok */
+/* "all", "none" or "1 3 5" <-> mask; parse takes the words after "msgs" */
+int  Screen_ParseMessages(int argc, char **argv, uint32_t *mask);
+void Screen_FormatMessages(uint32_t mask, char *text, size_t len);
 uint32_t Screen_Changes(void);                          /* increments on every change */
 const char *Screen_Name(ScreenId s);
 int  Screen_Find(const char *name);                     /* ScreenId or -1 */

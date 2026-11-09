@@ -4,6 +4,7 @@
 #include "rtc_trim.h"
 #include "app_hal.h"
 #include "log.h"
+#include "settings.h"
 #include "cmsis_os.h"
 
 #define TRIM_CAPTURES     64u                    /* one capture every 8 LSI periods */
@@ -77,36 +78,87 @@ static MeasureResult P_Measure(uint32_t *counts)
   return r;
 }
 
+/* Sub-second counter; reading SSR locks TR/DR until DR is read, so DR is read too */
+static uint32_t P_Ssr(void)
+{
+  uint32_t ss = RTC->SSR & 0xFFFFu;
+  (void)RTC->DR;
+  return ss;
+}
+
+/* Wait for the start of an RTC second (SSR reloads from PREDIV_S and counts
+ * down). Waits with osDelay until the last ~1/16 s, then polls; 0 = found. */
+static int P_WaitSecondStart(void)
+{
+  uint32_t s = RTC->PRER & 0x7FFFu;
+  uint32_t t0 = HAL_GetTick();
+  while (P_Ssr() > s / 16u)                          /* until near the end of a second */
+  {
+    if (HAL_GetTick() - t0 > 1500u) return -1;
+    osDelay(1);
+  }
+  uint32_t prev = P_Ssr();
+  for (uint32_t n = 0; n < 2000000u; n++)            /* < 1/16 s of polling */
+  {
+    uint32_t ss = P_Ssr();
+    if (ss > prev) return 0;                         /* reloaded: a second just started */
+    prev = ss;
+  }
+  return -1;
+}
+
 /* Write the RTC prescaler in init mode. HAL_RTC_Init() cannot be used: it skips
- * the prescaler once the calendar is set. The date and time are kept; only the
- * sub-second counter restarts. */
+ * the prescaler once the calendar is set. Init mode restarts the sub-second
+ * counter, so it is done right at the start of a second: the date and time
+ * lose well under a millisecond instead of up to one second. */
 static int P_SetPrescaler(uint16_t a, uint16_t s)
 {
   int rc = -1;
+  int aligned = P_WaitSecondStart() == 0;
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
   RTC->WPR = 0xCAu;                                  /* unlock */
   RTC->WPR = 0x53u;
   RTC->ISR |= RTC_ISR_INIT;
-  uint32_t t0 = HAL_GetTick();
-  while ((RTC->ISR & RTC_ISR_INITF) == 0u)
+  for (uint32_t n = 0; (RTC->ISR & RTC_ISR_INITF) == 0u; n++)   /* ~2 RTC clocks */
   {
-    if (HAL_GetTick() - t0 > 10u) goto done;
+    if (n > 200000u) goto done;
   }
   RTC->PRER = s;                                     /* two writes, as required */
   RTC->PRER = s | ((uint32_t)a << RTC_PRER_PREDIV_A_Pos);
-  RTC->ISR &= ~RTC_ISR_INIT;
-  RTC->ISR &= ~RTC_ISR_RSF;                          /* wait for the shadow registers */
-  t0 = HAL_GetTick();
-  while ((RTC->ISR & RTC_ISR_RSF) == 0u)
-  {
-    if (HAL_GetTick() - t0 > 10u) goto done;
-  }
-  hrtc.Init.AsynchPrediv = a;
-  hrtc.Init.SynchPrediv = s;
   rc = 0;
 done:
   RTC->ISR &= ~RTC_ISR_INIT;
+  RTC->ISR &= ~RTC_ISR_RSF;
   RTC->WPR = 0xFFu;                                  /* lock */
+  __set_PRIMASK(primask);
+  if (rc == 0)
+  {
+    uint32_t t0 = HAL_GetTick();                     /* wait for the shadow registers */
+    while ((RTC->ISR & RTC_ISR_RSF) == 0u)
+    {
+      if (HAL_GetTick() - t0 > 10u) break;
+    }
+    hrtc.Init.AsynchPrediv = a;
+    hrtc.Init.SynchPrediv = s;
+    if (!aligned) LOG_W("RTC prescaler written without second alignment");
+  }
   return rc;
+}
+
+static uint8_t enabled = 1;
+
+/* prescaler and calibration as they are in the RTC now */
+static uint16_t P_HwPrescalerA(void) { return (uint16_t)((RTC->PRER >> RTC_PRER_PREDIV_A_Pos) & 0x7Fu); }
+static uint16_t P_HwPrescalerS(void) { return (uint16_t)(RTC->PRER & 0x7FFFu); }
+static uint32_t P_HwCal(void)        { return RTC->CALR & (RTC_CALR_CALP | RTC_CALR_CALM); }
+
+static int P_SetCal(uint8_t calp, uint16_t calm)
+{
+  if (P_HwCal() == ((calp ? RTC_CALR_CALP : 0u) | calm)) return 0;    /* already set */
+  return HAL_RTCEx_SetSmoothCalib(&hrtc, RTC_SMOOTHCALIB_PERIOD_32SEC,
+                                  calp ? RTC_SMOOTHCALIB_PLUSPULSES_SET : RTC_SMOOTHCALIB_PLUSPULSES_RESET,
+                                  calm) == HAL_OK ? 0 : -1;
 }
 
 static void P_Trim(void)
@@ -114,13 +166,16 @@ static void P_Trim(void)
   RtcTrim t;
   MeasureResult r = M_TIMEOUT;
   uint32_t timer_hz = P_TimerClock();
+  /* Keep the prescaler that is in the RTC (from before the reset) when the
+   * calibration can still reach 1 Hz with it: writing the prescaler stops
+   * the RTC briefly and restarts the sub-second counter (up to 1 s lost). */
+  uint16_t keep = (P_HwPrescalerA() == RTC_TRIM_PREDIV_A) ? P_HwPrescalerS() : 0u;
   rtc_trim_diag.timer_hz = timer_hz;
   for (int i = 0; i < TRIM_TRIES && r != M_OK; i++)
   {
     uint32_t counts;
     r = P_Measure(&counts);
-    if (r == M_OK &&
-        RtcTrim_Calc(timer_hz, TRIM_LSI_PERIODS, counts, trimmed ? trim.prediv_s : 0u, &t) != 0)
+    if (r == M_OK && RtcTrim_Calc(timer_hz, TRIM_LSI_PERIODS, counts, keep, &t) != 0)
     {
       r = M_RANGE;
       rtc_trim_diag.result = r;
@@ -134,23 +189,19 @@ static void P_Trim(void)
     return;
   }
 
-  if (!trimmed || t.prediv_s != trim.prediv_s || t.prediv_a != trim.prediv_a)
+  if (t.prediv_s != P_HwPrescalerS() || t.prediv_a != P_HwPrescalerA())
   {
     if (P_SetPrescaler(t.prediv_a, t.prediv_s) != 0)
     {
       LOG_E("RTC trim: prescaler update failed");
       return;
     }
+    LOG_I("RTC prescaler set to %u/%u", (unsigned)t.prediv_a, (unsigned)t.prediv_s);
   }
-  if (!trimmed || t.calm != trim.calm || t.calp != trim.calp)
+  if (P_SetCal(t.calp, t.calm) != 0)
   {
-    if (HAL_RTCEx_SetSmoothCalib(&hrtc, RTC_SMOOTHCALIB_PERIOD_32SEC,
-                                 t.calp ? RTC_SMOOTHCALIB_PLUSPULSES_SET : RTC_SMOOTHCALIB_PLUSPULSES_RESET,
-                                 t.calm) != HAL_OK)
-    {
-      LOG_E("RTC trim: calibration update failed");
-      return;
-    }
+    LOG_E("RTC trim: calibration update failed");
+    return;
   }
   if (!trimmed)
   {
@@ -160,9 +211,22 @@ static void P_Trim(void)
   trimmed = 1;
 }
 
+/* the CubeMX setting (assumes 32.768 kHz, no calibration) */
+static void P_Default(void)
+{
+  if (P_HwPrescalerA() != 127u || P_HwPrescalerS() != 255u)
+  {
+    P_SetPrescaler(127u, 255u);
+  }
+  P_SetCal(0, 0);
+  trimmed = 0;
+}
+
 void RtcTrim_Init(void)
 {
-  P_Trim();
+  enabled = (uint8_t)Settings_GetRtcTrim();
+  if (enabled) P_Trim();
+  else P_Default();
   next_ms = osKernelGetTickCount() + TRIM_INTERVAL_MS;
 }
 
@@ -171,7 +235,7 @@ void RtcTrim_Poll(void)
   if ((int32_t)(osKernelGetTickCount() - next_ms) >= 0)
   {
     next_ms += TRIM_INTERVAL_MS;
-    P_Trim();
+    if (enabled) P_Trim();
   }
 }
 
@@ -180,4 +244,25 @@ int RtcTrim_Get(RtcTrim *t)
   if (!trimmed) return -1;
   *t = trim;
   return 0;
+}
+
+int RtcTrim_Enabled(void)
+{
+  return enabled;
+}
+
+void RtcTrim_SetEnabled(int on)
+{
+  enabled = on ? 1u : 0u;
+  Settings_SetRtcTrim((uint8_t)enabled);
+  if (enabled)
+  {
+    P_Trim();
+    LOG_I("RTC trim on");
+  }
+  else
+  {
+    P_Default();
+    LOG_I("RTC trim off (CubeMX default prescaler 127/255)");
+  }
 }

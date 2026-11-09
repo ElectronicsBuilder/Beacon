@@ -237,7 +237,7 @@ static void P_Update(void)
   {
     view = want;
     calculateClearImage();
-    MsgStore_SetPlaylist(view == VIEW_END ? plan.msg_mask : MSG_PLAYLIST_ALL);
+    MsgStore_SetPlaylist(0);              /* scene: no messages; the screens set their own */
     if (view == VIEW_SCENE)    Scene_Start((SceneId)plan.scene, end_text);
     else if (view == VIEW_END) Bands_Enter(SCREEN_END);
     else                       Bands_Enter(countup ? SCREEN_COUNTUP : SCREEN_COUNTDOWN);

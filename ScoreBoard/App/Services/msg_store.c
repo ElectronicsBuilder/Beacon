@@ -154,6 +154,16 @@ void MsgStore_SetPlaylist(uint32_t mask)
   playlist = mask;
 }
 
+int MsgStore_PlaylistCount(void)
+{
+  int n = 0;
+  for (int i = 0; i < queue.slot_count; i++)
+  {
+    if (queue.slots[i].seq != 0u && (playlist & (1uL << i)) != 0u) n++;
+  }
+  return n;
+}
+
 void MsgStore_SetCurrent(int id)
 {
   if (MsgStore_Get(id) != NULL) queue.current = (int8_t)(id - 1);

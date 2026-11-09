@@ -6,7 +6,7 @@
  *      (0 = until the countdown is changed), with the end text over it
  *   2. then: hold   = 00:00:00 in red with the end text (the countdown screen)
  *            screen = the "end" screen layout ("screen end ..."): text,
- *                     messages (only those in msg_mask), time since zero
+ *                     its messages ("screen end msgs ..."), time since zero
  */
 #ifndef APP_END_PLAN_H
 #define APP_END_PLAN_H
@@ -22,10 +22,9 @@ typedef struct {
   uint8_t  scene;          /* SceneId */
   uint8_t  then;           /* EndThen */
   uint16_t scene_s;        /* seconds of the scene, 0 = no end */
-  uint32_t msg_mask;       /* messages for the end screen (bit id-1), all = 0xFFFFFFFF */
 } EndPlan;
 
-#define END_PLAN_DEFAULT { SCENE_NONE, END_THEN_HOLD, 30u, 0xFFFFFFFFu }
+#define END_PLAN_DEFAULT { SCENE_NONE, END_THEN_HOLD, 30u }
 
 EndPhase EndPlan_Phase(const EndPlan *p, uint32_t secs_since_zero);
 const char *EndPlan_SceneName(SceneId s);

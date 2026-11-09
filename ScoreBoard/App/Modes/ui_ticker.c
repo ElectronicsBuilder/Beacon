@@ -19,7 +19,7 @@ const char *Ticker_Tick(Ticker *t, const TextLine *line, const char *own_text, M
   t->ms++;
   if (!t->showing)
   {
-    if (c->ticker && MsgStore_Count() > 0 && t->ms >= (uint32_t)c->gap_s * 1000u)
+    if (c->ticker && MsgStore_PlaylistCount() > 0 && t->ms >= (uint32_t)c->gap_s * 1000u)
     {
       const Msg *m = MsgStore_Get(MsgStore_Next());
       if (m != NULL)
@@ -35,7 +35,7 @@ const char *Ticker_Tick(Ticker *t, const TextLine *line, const char *own_text, M
   {
     /* done after one full scroll, or after show_s if it fits */
     int shown = t->ms > 50u && (line->scrolling ? line->passes >= 1u : t->ms >= (uint32_t)c->show_s * 1000u);
-    if (shown || !c->ticker || MsgStore_Count() == 0)
+    if (shown || !c->ticker || MsgStore_PlaylistCount() == 0)
     {
       t->showing = 0;
       t->ms = 0;

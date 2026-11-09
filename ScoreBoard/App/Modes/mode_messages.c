@@ -66,6 +66,7 @@ void Messages_Show(int id)
 
 static void P_Enter(void)
 {
+  MsgStore_SetPlaylist(MSG_PLAYLIST_ALL);       /* this mode plays every message */
   edit_stage = 0;
   seen_changes = MsgStore_Changes();
   P_Show(MsgStore_Next());

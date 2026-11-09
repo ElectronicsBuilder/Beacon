@@ -132,6 +132,14 @@ static int P_Bright(int argc, char **argv)
 /* time [YYYY-MM-DD] [HH:MM[:SS]]: show or set the wall clock */
 static int P_Time(int argc, char **argv)
 {
+  if (argc >= 2 && strcmp(argv[1], "trim") == 0)
+  {
+    if (argc == 3 && strcmp(argv[2], "on") == 0) RtcTrim_SetEnabled(1);
+    else if (argc == 3 && strcmp(argv[2], "off") == 0) RtcTrim_SetEnabled(0);
+    else if (argc != 2) return Cli_Error("use time trim on|off");
+    Cli_Printf("trim=%s", RtcTrim_Enabled() ? "on" : "off");
+    return 0;
+  }
   if (argc > 1)
   {
     const char *date = NULL, *time = NULL;
@@ -229,6 +237,9 @@ static void P_ScreenPrint(int s)
       n += snprintf(text + n, sizeof text - (size_t)n, "(bg %s)", Matrix_ColorName((MatrixColor)l->band[b].bg));
     }
   }
+  char ids[100];
+  Screen_FormatMessages(l->msg_mask, ids, sizeof ids);
+  snprintf(text + n, sizeof text - (size_t)n, " msgs=%s", ids);
   Cli_Printf("%s", text);
 }
 
@@ -240,6 +251,14 @@ static int P_Screen(int argc, char **argv)
     int s = Screen_Find(argv[1]);
     uint8_t top, bottom;
     if (s < 0) return Cli_Error("screen: clock, countdown, countup or end");
+    if (argc >= 3 && strcmp(argv[2], "msgs") == 0)
+    {
+      uint32_t mask;
+      if (Screen_ParseMessages(argc - 3, argv + 3, &mask) != 0) return Cli_Error("messages: all, none or ids 1..32");
+      Screen_SetMessages((ScreenId)s, mask);
+      P_ScreenPrint(s);
+      return 0;
+    }
     if (argc == 4 || argc == 5)
     {
       char *end;
@@ -296,12 +315,12 @@ static int P_Reboot(int argc, char **argv)
 static const CliCommand system_commands[] = {
   { "info",   "",                         "firmware and hardware information",            P_Info },
   { "status", "",                         "time, game, players, score, brightness, USB",  P_Status },
-  { "time",   "[YYYY-MM-DD] [HH:MM[:SS]]", "show or set the date/time",                   P_Time },
+  { "time",   "[YYYY-MM-DD] [HH:MM[:SS]] | trim on|off", "show or set the date/time; RTC accuracy trim", P_Time },
   { "bright", "[5-100]",                  "show or set the matrix brightness (saved)",   P_Bright },
   { "log",    "[error|warn|info|debug]",  "show or set the log level",                    P_Log },
   { "echo",   "[on|off]",                 "off = machine mode (no echo/prompt)",          P_Echo },
   { "mode",   "[name|number]",            "list the display modes or switch (saved)",    P_Mode },
-  { "screen", "[clock|countdown|countup|end] [<line> <item> | <line> bg <colour> | <i1> <i2> <i3> <i4>]",
+  { "screen", "[clock|countdown|countup|end] [msgs all|none|<ids> | <line> <item> | <line> bg <colour> | <i1> <i2> <i3> <i4>]",
                "display lines: big time text ticker msg off, split top/bottom, background", P_Screen },
   { "keys",   "",                         "single-key control of the mode (ESC to return)", P_Keys },
   { "reboot", "",                         "restart the board",                            P_Reboot },

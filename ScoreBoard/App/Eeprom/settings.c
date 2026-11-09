@@ -13,6 +13,7 @@
 #define SETTINGS_ADDR_MARKER      0x0F00u
 #define SETTINGS_ADDR_BRIGHTNESS  0x0F01u
 #define SETTINGS_ADDR_MODE        0x0F02u
+#define SETTINGS_ADDR_RTC_TRIM    0x0F03u
 #define SETTINGS_MARKER           0xB7u
 #define SETTINGS_SAVE_DELAY_MS    2000u
 
@@ -20,6 +21,7 @@ static uint8_t  save_pending;
 static uint32_t save_at_ms;
 static int      saved_mode = -1;
 static uint8_t  mode_value = 0xFFu;
+static uint8_t  trim_value = 0xFFu;
 
 void Settings_Load(void)
 {
@@ -33,6 +35,8 @@ void Settings_Load(void)
   {
     Matrix_SetBrightness((uint8_t)value);
   }
+  int16_t trim = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_RTC_TRIM);
+  if (trim >= 0) trim_value = (uint8_t)trim;
   int16_t mode = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_MODE);
   if (mode >= 0 && mode < 0xFF)
   {
@@ -63,6 +67,17 @@ void Settings_SetMode(uint8_t mode)
   P_Changed();
 }
 
+int Settings_GetRtcTrim(void)
+{
+  return trim_value != 0u;
+}
+
+void Settings_SetRtcTrim(uint8_t on)
+{
+  trim_value = on ? 1u : 0u;
+  P_Changed();
+}
+
 static void P_Write(uint16_t addr, uint8_t value)
 {
   if (Eeprom24_ReadByte(EE24_ADDR_0, addr) != value)
@@ -78,6 +93,7 @@ void Settings_Poll(void)
     save_pending = 0;
     P_Write(SETTINGS_ADDR_BRIGHTNESS, Matrix_GetBrightness());
     P_Write(SETTINGS_ADDR_MODE, mode_value);
+    P_Write(SETTINGS_ADDR_RTC_TRIM, trim_value);
     P_Write(SETTINGS_ADDR_MARKER, SETTINGS_MARKER);
   }
 }

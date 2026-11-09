@@ -6,12 +6,13 @@
 #include "matrix.h"
 #include "log.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define LAYOUT_DEFAULT {{ { BAND_TICKER, BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK }, \
-                          { BAND_BIG,    BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK } }}
+                          { BAND_BIG,    BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK } }, SCREEN_MSGS_ALL }
 
-#define LAYOUT_END     {{ { BAND_TEXT, BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK },                           { BAND_MSG,  BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK } }}
+#define LAYOUT_END     {{ { BAND_TEXT, BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK },                           { BAND_MSG,  BAND_NONE, MTX_C_BLACK }, { BAND_MSG, BAND_NONE, MTX_C_BLACK } }, SCREEN_MSGS_ALL }
 
 static ScreenLayout layouts[SCREEN_COUNT] = { LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_END };
 static uint32_t changes;
@@ -72,6 +73,43 @@ int Screen_SetBackground(ScreenId s, int band, uint8_t color)
   layouts[s].band[band].bg = color;
   P_Save();
   return 0;
+}
+
+int Screen_SetMessages(ScreenId s, uint32_t mask)
+{
+  if (s >= SCREEN_COUNT) return -1;
+  layouts[s].msg_mask = mask;
+  P_Save();
+  return 0;
+}
+
+int Screen_ParseMessages(int argc, char **argv, uint32_t *mask)
+{
+  if (argc == 1 && strcmp(argv[0], "all") == 0)  { *mask = SCREEN_MSGS_ALL; return 0; }
+  if (argc == 1 && strcmp(argv[0], "none") == 0) { *mask = 0; return 0; }
+  uint32_t m = 0;
+  for (int i = 0; i < argc; i++)
+  {
+    char *end;
+    long id = strtol(argv[i], &end, 10);
+    if (*end != '\0' || id < 1 || id > 32) return -1;
+    m |= 1uL << (id - 1);
+  }
+  if (argc == 0) return -1;
+  *mask = m;
+  return 0;
+}
+
+void Screen_FormatMessages(uint32_t mask, char *text, size_t len)
+{
+  if (mask == SCREEN_MSGS_ALL) { snprintf(text, len, "all"); return; }
+  if (mask == 0u)              { snprintf(text, len, "none"); return; }
+  size_t n = 0;
+  text[0] = '\0';
+  for (int i = 0; i < 32 && n + 4u < len; i++)
+  {
+    if (mask & (1uL << i)) n += (size_t)snprintf(text + n, len - n, "%s%d", n ? "," : "", i + 1);
+  }
 }
 
 uint32_t Screen_Changes(void)       { return changes; }
