@@ -1,13 +1,15 @@
 /*
  * mode_countdown.c - countdown and count-up modes. See countdown.h.
  *
- * Keyboard (both modes): T or Enter opens the date/time editor (countdown:
- * the end; count-up: the start). Count-up: S stops / resumes, R restarts now.
+ * Keyboard: Enter = guided setup (countdown: end time, label, end text;
+ * count-up: start time, label), T = time only, L = label, E = end text,
+ * C / Del = clear the end show (countdown); count-up: S stop/resume, R restart.
  */
 #include "countdown.h"
 #include "mode.h"
 #include "mode_ui.h"
 #include "ui_bands.h"
+#include "ui_text_edit.h"
 #include "scenes.h"
 #include "msg_store.h"
 #include "clock.h"
@@ -163,6 +165,11 @@ static char since_big[12];              /* end screen: time since zero */
 static char end_text[TIMER_TEXT_MAX + 1];
 static uint32_t dismissed_target;       /* end show stopped for this target (C / Del / cd dismiss) */
 
+/* keyboard editing (see P_Key) */
+typedef enum { ED_NONE, ED_TIME, ED_LABEL, ED_END } EditStep;
+static EditStep editing;
+static uint8_t guided;                  /* 1 = Enter setup: go on to the next step */
+
 static void P_Update(void)
 {
   char *text = own_text;
@@ -283,8 +290,57 @@ static void P_EnterCountup(void)   { countup = 1; P_Enter(); }
 
 static void P_Exit(void)
 {
+  editing = ED_NONE;
+  guided = 0;
   TimeEdit_Stop();
+  TextEdit_Stop();
   MsgStore_SetPlaylist(MSG_PLAYLIST_ALL);
+}
+
+/* Keyboard editing. Enter = guided setup: time, then label, then (countdown)
+ * end text; T / L / E edit one of them. */
+
+static void P_StartTime(void)
+{
+  ClockTime t;
+  uint32_t now;
+  uint32_t initial = countup ? cfg.cu_start : cfg.cd_target;
+  if (initial == 0u)
+  {
+    initial = (P_Now(&now) == 0) ? now : ClockCalc_ToSeconds(&(ClockTime){ 2026, 1, 1, 0, 0, 0, 4 });
+  }
+  ClockCalc_FromSeconds(initial, &t);
+  editing = ED_TIME;
+  TimeEdit_Start(countup ? "COUNT UP FROM" : "COUNTDOWN TO", &t);
+}
+
+static void P_StartText(EditStep step)
+{
+  editing = step;
+  if (step == ED_END)
+    TextEdit_Start("END TEXT", cfg.cd_end, TIMER_TEXT_MAX);
+  else
+    TextEdit_Start(countup ? "COUNT-UP LABEL" : "COUNTDOWN LABEL", countup ? cfg.cu_label : cfg.cd_label,
+                   TIMER_TEXT_MAX);
+}
+
+static void P_EditDone(void)
+{
+  editing = ED_NONE;
+  guided = 0;
+  TimeEdit_Stop();
+  TextEdit_Stop();
+  P_Redraw();
+}
+
+/* next step of the guided setup, or done */
+static void P_EditNext(void)
+{
+  TimeEdit_Stop();
+  TextEdit_Stop();
+  if (guided && editing == ED_TIME)              P_StartText(ED_LABEL);
+  else if (guided && editing == ED_LABEL && !countup) P_StartText(ED_END);
+  else                                           P_EditDone();
 }
 
 static void P_Tick(void)
@@ -292,6 +348,11 @@ static void P_Tick(void)
   if (TimeEdit_Active())
   {
     TimeEdit_Tick();
+    return;
+  }
+  if (TextEdit_Active())
+  {
+    TextEdit_Tick();
     return;
   }
   if (++poll_count >= POLL_MS)
@@ -306,7 +367,7 @@ static void P_Tick(void)
 
 static void P_Key(uint8_t key)
 {
-  if (TimeEdit_Active())
+  if (editing == ED_TIME && TimeEdit_Active())
   {
     ClockTime t;
     TimeEntryState st = TimeEdit_Key(key, &t);
@@ -324,26 +385,52 @@ static void P_Key(uint8_t key)
         Timer_SetCountdown(ClockCalc_ToSeconds(&t));
         LOG_I("Countdown to %s", text);
       }
+      P_EditNext();
     }
-    if (st != TE_EDITING)
+    else if (st == TE_CANCEL)
     {
-      TimeEdit_Stop();
-      P_Redraw();
+      P_EditDone();                              /* ESC on the time: stop the setup */
+    }
+    return;
+  }
+  if ((editing == ED_LABEL || editing == ED_END) && TextEdit_Active())
+  {
+    TimeEntryState st = TextEdit_Key(key);
+    if (st == TE_DONE)
+    {
+      const char *text = TextEdit_Text();
+      if (editing == ED_END)  { Timer_SetCountdownEnd(text);   LOG_I("Countdown end text: %s", text); }
+      else if (countup)       { Timer_SetCountupLabel(text);   LOG_I("Count-up label: %s", text); }
+      else                    { Timer_SetCountdownLabel(text); LOG_I("Countdown label: %s", text); }
+      P_EditNext();
+    }
+    else if (st == TE_CANCEL)
+    {
+      P_EditNext();                              /* ESC on a text: keep it, go on */
     }
     return;
   }
 
   uint32_t now;
-  if (key == 't' || key == 'T' || key == KB_ENTER)
+  if (key == KB_ENTER)
   {
-    ClockTime t;
-    uint32_t initial = countup ? cfg.cu_start : cfg.cd_target;
-    if (initial == 0u)
-    {
-      initial = (P_Now(&now) == 0) ? now : ClockCalc_ToSeconds(&(ClockTime){ 2026, 1, 1, 0, 0, 0, 4 });
-    }
-    ClockCalc_FromSeconds(initial, &t);
-    TimeEdit_Start(countup ? "COUNT UP FROM" : "COUNTDOWN TO", &t);
+    guided = 1;
+    P_StartTime();
+  }
+  else if (key == 't' || key == 'T')
+  {
+    guided = 0;
+    P_StartTime();
+  }
+  else if (key == 'l' || key == 'L')
+  {
+    guided = 0;
+    P_StartText(ED_LABEL);
+  }
+  else if (!countup && (key == 'e' || key == 'E'))
+  {
+    guided = 0;
+    P_StartText(ED_END);
   }
   else if (countup && (key == 's' || key == 'S'))
   {

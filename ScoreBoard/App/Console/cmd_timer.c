@@ -242,8 +242,8 @@ static const CliCommand timer_commands[] = {
     "cd after msgs all|none|<ids>    messages on the end screen\n"
     "cd dismiss                      at zero: stop the scene and messages (keyboard C/Del)\n"
     "cd clear                        remove the countdown\n"
-    "Setting it switches to Countdown mode. Keyboard: F3, T or Enter edits the end,\n"
-    "C or Del clears the end show;\n"
+    "Setting it switches to Countdown mode. Keyboard (F3): Enter = setup (end time,\n"
+    "label, end text), T time, L label, E end text, C or Del clears the end show;\n"
     "F12 menu: end scene, scene time, after scene." },
   { "cu", "[start|stop|...]", "count-up", P_Cu,
     "cu                                  show start, elapsed, state, label\n"
@@ -253,8 +253,8 @@ static const CliCommand timer_commands[] = {
     "cu stop | cu resume                 pause / continue from the shown time\n"
     "cu label \"SHIFT\"                    text with the time\n"
     "cu clear                            remove the count-up\n"
-    "Starting it switches to Count-up mode. Keyboard: F4, T/Enter start time,\n"
-    "S stop/resume, R restart." },
+    "Starting it switches to Count-up mode. Keyboard (F4): Enter = setup (start,\n"
+    "label), T start, L label, S stop/resume, R restart." },
 };
 
 void CmdTimer_Register(void)

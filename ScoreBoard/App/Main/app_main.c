@@ -86,17 +86,7 @@ void App_Init(void)
   EE_TEST();
   Settings_Load();              // saved brightness and display mode
   RtcTrim_Init();               // RTC accuracy: LSI measured against the crystal
-  RTC_Configuration();
-
-  /* OLED start-up check list */
-  OledFont_DrawString(0, 0,  "BEACON", &Arial_7x10, RGB_COL_BLUE,    RGB_COL_BLACK);
-  OledFont_DrawString(0, 15, "I2C EE INIT CHECK",  &Arial_7x10, RGB_COL_GREEN,   RGB_COL_BLACK);
-  RTC_Configuration();
-  OledFont_DrawString(0, 30, "RTC INIT CHECK",     &Arial_7x10, RGB_COL_YELLOW,  RGB_COL_BLACK); DELAY_MILLI(100);
-  OledFont_DrawString(0, 45, "MATRIX INIT CHECK",  &Arial_7x10, RGB_COL_CYAN,    RGB_COL_BLACK); DELAY_MILLI(100);
-  OledFont_DrawString(0, 60, "USB HID INIT CHECK", &Arial_7x10, RGB_COL_MAGENTA, RGB_COL_BLACK); DELAY_MILLI(100);
-  OledFont_DrawString(0, 75, "SYS INIT CHECK ",    &Arial_7x10, RGB_COL_BLUE,    RGB_COL_BLACK); DELAY_MILLI(100);
-  OledFont_DrawString(0, 90, "TFT INIT CHECK ",    &Arial_7x10, RGB_COL_BLUE,    RGB_COL_BLACK); DELAY_MILLI(100);
+  RTC_Configuration();          // game timer (TM mm:ss)
 
   /* Player records from the EEPROM */
   TEST_GAMERS2(GAMER0, 0);
