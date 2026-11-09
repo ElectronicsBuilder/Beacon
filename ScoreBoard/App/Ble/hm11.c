@@ -183,6 +183,17 @@ static int P_Cmd(const char *cmd, char *reply, size_t len)
   return P_At(line, reply, len);
 }
 
+/* An HM-1x in auto sleep (AT+PWRM0) ignores AT commands until it gets a
+ * string longer than 80 characters; it still advertises and works when
+ * connected. */
+static void P_Wake(void)
+{
+  static const char wake[] = "WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP-WAKEUP";
+  char reply[16];
+  P_At(wake, reply, sizeof reply);           /* also drops whatever it answers */
+  osDelay(100);
+}
+
 void Ble_Init(void)
 {
   static const uint32_t bauds[] = { 9600u, 115200u, 57600u, 38400u, 19200u, 4800u, 2400u, 1200u, 230400u };
@@ -194,6 +205,7 @@ void Ble_Init(void)
   for (size_t i = 0; i < sizeof bauds / sizeof bauds[0] && state == BLE_ABSENT; i++)
   {
     P_SetBaud(bauds[i]);
+    P_Wake();
     for (crlf = 0; crlf < 2u && state == BLE_ABSENT; crlf++)
     {
       int n = P_Cmd("AT", reply, sizeof reply);
@@ -217,6 +229,7 @@ void Ble_Init(void)
     return;
   }
   P_Cmd("AT+NOTI1", reply, sizeof reply);    /* "OK+CONN" / "OK+LOST" notifications */
+  P_Cmd("AT+PWRM1", reply, sizeof reply);    /* no auto sleep: AT commands always work */
   P_ReadSettings();
   if (strcmp(name, "HMSoft") == 0 || name[0] == '\0')
   {
