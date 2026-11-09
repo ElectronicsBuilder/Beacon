@@ -9,6 +9,8 @@
  *   msg order seq|random              play order
  *   msg time <1-60>                   seconds a message that fits is shown
  *   msg ticker on|off [gap s]         also show them in the clock/countdown line
+ *   msg gap <1-250>                   seconds the clock/countdown text stays
+ *                                     before the ticker shows a message
  *   msg free                          free space
  */
 #include "commands.h"
@@ -133,9 +135,17 @@ static int P_Msg(int argc, char **argv)
     else return Cli_Error("use msg ticker on|off [gap seconds]");
     if (argc == 4)
     {
-      if (P_Number(argv[3], 1, 120, &v) != 0) return Cli_Error("gap seconds 1..120");
+      if (P_Number(argv[3], 1, 250, &v) != 0) return Cli_Error("gap seconds 1..250");
       c.gap_s = (uint8_t)v;
     }
+    MsgStore_SetConfig(&c);
+    P_List();
+    return 0;
+  }
+  if (strcmp(sub, "gap") == 0 && argc == 3)
+  {
+    if (P_Number(argv[2], 1, 250, &v) != 0) return Cli_Error("gap seconds 1..250");
+    c.gap_s = (uint8_t)v;
     MsgStore_SetConfig(&c);
     P_List();
     return 0;
@@ -145,11 +155,11 @@ static int P_Msg(int argc, char **argv)
     P_Free();
     return 0;
   }
-  return Cli_Error("usage: msg [list|add|del|clear|show|order|time|ticker|free] (help msg)");
+  return Cli_Error("usage: msg [list|add|del|clear|show|order|time|gap|ticker|free] (help msg)");
 }
 
 static const CliCommand msg_commands[] = {
-  { "msg", "[list | add \"l1\" [\"l2\"] [colour] | del <id> | clear | show <id> | order seq|random | time <s> | ticker on|off [gap] | free]",
+  { "msg", "[list | add \"l1\" [\"l2\"] [colour] | del <id> | clear | show <id> | order seq|random | time <s> | gap <s> | ticker on|off [gap] | free]",
            "message list (shown in Messages mode and the ticker)", P_Msg },
 };
 

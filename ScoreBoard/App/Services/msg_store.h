@@ -15,7 +15,7 @@ typedef struct {
   uint8_t order;           /* MsgOrder */
   uint8_t show_s;          /* seconds a message that fits is shown (1..60) */
   uint8_t ticker;          /* 1 = also shown in the clock / countdown text line */
-  uint8_t gap_s;           /* ticker: seconds of the normal text between messages */
+  uint8_t gap_s;           /* ticker: seconds the normal text (date, days) stays between messages, 1..250 */
 } MsgConfig;
 
 void MsgStore_Load(void);                          /* at boot */

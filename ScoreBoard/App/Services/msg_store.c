@@ -55,7 +55,7 @@ void MsgStore_Load(void)
 
   MsgConfig c;
   if (EeRecord_Load(EE_RECORD_MSGCFG_ADDR, &c, sizeof c) == 0 && c.order <= MSG_ORDER_RANDOM &&
-      c.show_s >= 1u && c.show_s <= 60u && c.gap_s >= 1u && c.gap_s <= 120u)
+      c.show_s >= 1u && c.show_s <= 60u && c.gap_s >= 1u && c.gap_s <= 250u)
   {
     cfg = c;
   }

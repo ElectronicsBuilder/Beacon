@@ -8,6 +8,7 @@
 #include "log.h"
 #include "ui_time_edit.h"
 #include "ui_text_edit.h"
+#include "ui_menu.h"
 #include <string.h>
 
 /* Append new games/screens at the end (the saved mode is the index). */
@@ -75,6 +76,11 @@ int Mode_Select(int index)
 
 void Mode_Tick(void)
 {
+  if (Menu_Active())
+  {
+    Menu_Tick();
+    return;
+  }
   if (current >= 0)
   {
     modes[current]->tick();
@@ -85,6 +91,22 @@ void Mode_Key(uint8_t key)
 {
   if (key == 0)
   {
+    return;
+  }
+  if (Menu_Active())                             /* settings menu (F12) has the keys */
+  {
+    if (Menu_Key(key) && current >= 0)
+    {
+      calculateClearImage();                     /* closed: the mode draws its screen again */
+      CHANGE_FONT(BLUE);
+      modes[current]->enter();
+    }
+    return;
+  }
+  if (key == KB_F12 && !TimeEdit_Active() && !TextEdit_Active())
+  {
+    if (current >= 0) modes[current]->exit();
+    Menu_Open();
     return;
   }
   if (key >= KB_F1 && key <= KB_F8)

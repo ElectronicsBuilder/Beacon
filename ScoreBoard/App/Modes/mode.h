@@ -5,7 +5,8 @@
  * Mode_Tick() every millisecond and Mode_Key() for every key from the USB
  * keyboard (and the console "keys" mode outside ping-pong).
  *
- * Keys handled for every mode:  F1..F8 select mode 1..8, '+' / '-' brightness.
+ * Keys handled for every mode:  F1..F8 select mode 1..8, '+' / '-' brightness,
+ * F12 settings menu (ui_menu.c).
  *
  * Adding a game or screen: write mode_<name>.c with an AppMode, then append
  * it to the table in mode.c (append only: the saved mode is the table index).
