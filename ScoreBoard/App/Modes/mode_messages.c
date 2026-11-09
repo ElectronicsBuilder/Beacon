@@ -6,8 +6,10 @@
  * random, see "msg order"). Two-line messages use both lines, one-line
  * messages the lower line.
  *
- * Keyboard: Left/Right previous/next, Delete removes the shown message,
- * Enter adds a message (line 1, Enter, optional line 2, Enter; ESC cancels).
+ * Keyboard: Left/Right go through all messages (in list order), Up/Down
+ * change the colour of the shown one (saved), Delete removes it, Enter adds
+ * a message (line 1, Enter, optional line 2, Enter; ESC cancels). After a
+ * key the message stays for 30 s before playing goes on.
  */
 #include "mode.h"
 #include "mode_ui.h"
@@ -17,9 +19,12 @@
 #include "log.h"
 #include <string.h>
 
+#define BROWSE_HOLD_MS 30000u      /* after a key: stay on the message this long */
+
 static TextLine l1, l2;
 static int shown_id;                 /* 0 = none */
 static uint32_t shown_ms;
+static uint32_t browse_ms;           /* > 0: the user is browsing, stay on this message */
 static uint32_t seen_changes;
 static uint8_t edit_stage;           /* 0 = playing, 1 = typing line 1, 2 = line 2 */
 static char new_line1[MSG_LINE_MAX + 1];
@@ -104,7 +109,8 @@ static void P_Tick(void)
   TextLine_Tick(&l1);
   TextLine_Tick(&l2);
   shown_ms++;
-  if (shown_id != 0 && P_Done() && MsgStore_Count() > 1)
+  if (browse_ms > 0u) browse_ms--;
+  if (shown_id != 0 && browse_ms == 0u && P_Done() && MsgStore_Count() > 1)
   {
     P_Show(MsgStore_Next());
   }
@@ -161,13 +167,22 @@ static void P_Key(uint8_t key)
     edit_stage = 1;
     TextEdit_Start("NEW MESSAGE", "", MSG_LINE_MAX);
   }
-  else if (key == KB_RIGHT)
+  else if (key == KB_RIGHT || key == KB_LEFT)  /* browse all messages in list order */
   {
-    P_Show(MsgStore_Next());
+    browse_ms = BROWSE_HOLD_MS;
+    P_Show(MsgStore_Step(key == KB_RIGHT ? 1 : -1));
   }
-  else if (key == KB_LEFT)
+  else if ((key == KB_UP || key == KB_DOWN) && shown_id != 0)   /* colour of the shown message */
   {
-    P_Show(MsgStore_Prev());
+    const Msg *m = MsgStore_Get(shown_id);
+    int c = m->color;
+    int n = (int)MTX_C_BLACK;                     /* the text colours, black excluded */
+    c = (c + (key == KB_UP ? 1 : n - 1)) % n;
+    MsgStore_SetColor(shown_id, (uint8_t)c);
+    seen_changes = MsgStore_Changes();
+    browse_ms = BROWSE_HOLD_MS;
+    LOG_I("Message %d colour: %s", shown_id, Matrix_ColorName((MatrixColor)c));
+    P_Show(shown_id);
   }
   else if (key == KB_DEL && shown_id != 0)
   {

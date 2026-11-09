@@ -173,7 +173,8 @@ static const CliCommand msg_commands[] = {
     "msg ticker on|off [gap]       messages on the ticker lines at all\n"
     "msg free                      free places (32 messages)\n"
     "Which screens show messages: screen <s> msgs all|none|<ids>.\n"
-    "Keyboard: F5 Messages mode (Enter adds, Del deletes), F12 menu." },
+    "Keyboard: F5 Messages mode: Left/Right browse, Up/Down colour, Enter adds,\n"
+    "Del deletes; F12 menu." },
 };
 
 void CmdMsg_Register(void)

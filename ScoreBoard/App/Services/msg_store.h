@@ -32,6 +32,8 @@ void MsgStore_Clear(void);
 int  MsgStore_Sorted(uint8_t *ids);                /* ids in play order, returns count */
 int  MsgStore_Next(void);                          /* id to show next (order setting), 0 = none */
 int  MsgStore_Prev(void);
+int  MsgStore_Step(int dir);                       /* +1 / -1 in list order (any play order) */
+int  MsgStore_SetColor(int id, uint8_t color);     /* saved; 0 = ok */
 void MsgStore_SetCurrent(int id);                  /* e.g. "msg show" */
 /* Limit MsgStore_Next to some messages (bit id-1 set): each screen has its
  * own set (screen_layout.c); MSG_PLAYLIST_ALL = every message, 0 = none. */

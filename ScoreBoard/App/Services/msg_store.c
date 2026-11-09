@@ -149,6 +149,22 @@ int MsgStore_Prev(void)
   return MsgQueue_Prev(&queue) + 1;
 }
 
+int MsgStore_Step(int dir)
+{
+  if (dir < 0) return MsgQueue_Prev(&queue) + 1;
+  return MsgQueue_NextIn(&queue, MSG_ORDER_SEQ, 0, playlist) + 1;
+}
+
+int MsgStore_SetColor(int id, uint8_t color)
+{
+  int slot = id - 1;
+  if (MsgStore_Get(id) == NULL) return -1;
+  queue.slots[slot].color = color;
+  P_SaveSlot(slot);
+  changes++;
+  return 0;
+}
+
 void MsgStore_SetPlaylist(uint32_t mask)
 {
   playlist = mask;
