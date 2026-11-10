@@ -152,7 +152,8 @@ class App(ctk.CTk):
         self.connect_btn.pack(padx=14, fill="x")
 
         self.sync_on_connect = ctk.BooleanVar(value=True)
-        ctk.CTkCheckBox(sb, text="Set board time on connect", variable=self.sync_on_connect).pack(padx=14, pady=(12, 4), anchor="w")
+        ctk.CTkCheckBox(sb, text="Set board time on connect (internet time)",
+                        variable=self.sync_on_connect).pack(padx=14, pady=(12, 4), anchor="w")
         self.sync_btn = ctk.CTkButton(sb, text="Set board time now", command=self.sync_time)
         self.sync_btn.pack(padx=14, fill="x")
 
@@ -226,7 +227,7 @@ class App(ctk.CTk):
         def done(synced):
             self.sb = sb
             self._set_connected(True)
-            self.note(f"Connected to {link.name}" + (f", board time set to {synced}" if synced else ""))
+            self.note(f"Connected to {link.name}" + (", " + self._sync_text(synced) if synced else ""))
             self.refresh_all()
 
         def fail(e):
@@ -250,10 +251,19 @@ class App(ctk.CTk):
             for lbl in self.info_labels.values():
                 lbl.configure(text="-")
 
+    @staticmethod
+    def _sync_text(synced) -> str:
+        text, source, pc_error = synced
+        msg = f"board time set to {text} ({source})"
+        if pc_error is not None and abs(pc_error) >= 5:
+            msg += f" - this PC's clock is {abs(pc_error) / 60:.1f} min {'fast' if pc_error > 0 else 'slow'}"
+        return msg
+
     def sync_time(self) -> None:
         if self.sb is None:
             return
-        self.worker.submit(self.sb.sync_time, lambda t: (self.note(f"Board time set to {t}"), self.refresh_status()))
+        self.worker.submit(self.sb.sync_time,
+                           lambda r: (self.note(self._sync_text(r)[0].upper() + self._sync_text(r)[1:]), self.refresh_status()))
 
     def _on_close(self) -> None:
         if self.sb is not None:

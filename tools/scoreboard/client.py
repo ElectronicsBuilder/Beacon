@@ -139,15 +139,19 @@ class ScoreBoard:
     def status(self) -> dict[str, str]:
         return self.run("status").kv()
 
-    def sync_time(self, now: _dt.datetime | None = None) -> str:
-        """Set the board clock to this PC's local time; returns the time sent."""
-        now = now or _dt.datetime.now()
-        if now.microsecond > 500_000:          # send the nearest whole second
-            time.sleep((1_000_000 - now.microsecond) / 1e6)
-            now = _dt.datetime.now()
+    def sync_time(self) -> tuple[str, str, float | None]:
+        """Set the board clock to local time from internet time (NTP), or from
+        this PC's clock without internet. Returns (time sent, source, PC clock
+        error in seconds or None)."""
+        from .ntp import local_now
+        reference, source, pc_error = local_now()
+        offset = reference - _dt.datetime.now()          # corrects a wrong PC clock
+        now = _dt.datetime.now() + offset
+        time.sleep((1_000_000 - now.microsecond) / 1e6)  # send on a whole second
+        now = (_dt.datetime.now() + offset).replace(microsecond=0)
         text = now.strftime("%Y-%m-%d %H:%M:%S")
         self.run(f"time {text}")
-        return text
+        return text, source, pc_error
 
     def messages(self) -> tuple[list[Message], dict[str, str]]:
         """Message list in play order, and the settings line (count, order...)."""
