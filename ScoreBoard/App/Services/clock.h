@@ -25,6 +25,11 @@ typedef struct {
 } ClockTime;
 
 int  Clock_IsSet(void);
+/* After a power-up the RTC kept the date/time on VBAT but did not count
+ * (the LSI only runs on main power): the time is behind until it is set
+ * again. Kept in a backup register so a later reset does not forget it. */
+void Clock_Init(void);                              /* App_Init: check the reset cause */
+int  Clock_IsStale(void);                           /* 1 = time not synced since power-up */
 void Clock_Get(ClockTime *t);
 int  Clock_Set(const ClockTime *t);                 /* 0 = ok, -1 = invalid */
 

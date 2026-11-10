@@ -87,6 +87,7 @@ void App_Init(void)
   EE_TEST();
   Settings_Load();              // saved brightness and display mode
   RtcTrim_Init();               // RTC accuracy: LSI measured against the crystal
+  Clock_Init();                 // power was off? then the time is behind ("SYNC TIME")
   RTC_Configuration();          // game timer (TM mm:ss)
 
   /* Player records from the EEPROM */

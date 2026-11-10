@@ -4,8 +4,29 @@
 #include "clock.h"
 #include "app_hal.h"
 #include "clock_calc.h"
+#include "log.h"
 
-#define CLOCK_SET_MARKER  0xC10Cu        /* backup register DR1: time was set */
+#define CLOCK_SET_MARKER   0xC10Cu       /* backup register DR1: time was set */
+#define CLOCK_STALE_MARK   0x57A1u       /* backup register DR2: not synced since power-up */
+
+void Clock_Init(void)
+{
+  uint32_t csr = RCC->CSR;
+  RCC->CSR |= RCC_CSR_RMVF;                         /* clear the reset flags for the next boot */
+  if ((csr & (RCC_CSR_PORRSTF | RCC_CSR_BORRSTF)) != 0u && Clock_IsSet())
+  {
+    HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR2, CLOCK_STALE_MARK);
+  }
+  if (Clock_IsStale())
+  {
+    LOG_W("Clock: power was off, the time is behind until it is set (GUI or time ...)");
+  }
+}
+
+int Clock_IsStale(void)
+{
+  return Clock_IsSet() && HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR2) == CLOCK_STALE_MARK;
+}
 
 int Clock_IsSet(void)
 {
@@ -50,6 +71,7 @@ int Clock_Set(const ClockTime *t)
     return -1;
   }
   HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, CLOCK_SET_MARKER);
+  HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR2, 0u);       /* synced */
   return 0;
 }
 

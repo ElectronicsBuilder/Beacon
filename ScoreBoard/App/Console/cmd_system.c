@@ -75,6 +75,7 @@ static int P_Status(int argc, char **argv)
     Clock_Format(&t, now, sizeof now);
   }
   Cli_Printf("time=%s", now);
+  Cli_Printf("time_ok=%s", Clock_IsSet() && !Clock_IsStale() ? "yes" : "no");
   RtcTrim trim;
   if (RtcTrim_Get(&trim) == 0)
   {

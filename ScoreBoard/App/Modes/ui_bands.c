@@ -8,6 +8,8 @@
 #include "ui_text_line.h"
 #include "ui_ticker.h"
 #include "msg_store.h"
+#include "clock.h"
+#include "cmsis_os.h"
 #include "layout.h"
 #include "FONT.h"
 #include <stdio.h>
@@ -187,6 +189,11 @@ static void P_SlotTick(int b, Slot *s, const char *big, uint8_t big_color, const
       if (s->kind == BAND_TICKER && ticker)
       {
         shown = Ticker_Tick(&s->ticker, &s->a, text, &c);
+      }
+      if (Clock_IsStale() && (osKernelGetTickCount() / 1000u) % 2u)   /* time behind: blink */
+      {
+        shown = "SYNC TIME";
+        c = MTX_C_RED;
       }
       TextLine_Set(&s->a, shown, P_Color(b, c));
       TextLine_Tick(&s->a);
