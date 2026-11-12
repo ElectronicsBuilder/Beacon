@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef enum { ITEM_GAP, ITEM_TIME, ITEM_TICKER, ITEM_ORDER, ITEM_SCENE, ITEM_SCENE_S, ITEM_THEN,
+typedef enum { ITEM_GAP, ITEM_TIME, ITEM_TICKER, ITEM_ORDER, ITEM_CD_DAYS, ITEM_SCENE, ITEM_SCENE_S, ITEM_THEN,
                ITEM_BRIGHT, ITEM_COUNT } MenuItem;
 
 static const struct { const char *title; int lo, hi, step; } items[ITEM_COUNT] = {
@@ -24,6 +24,7 @@ static const struct { const char *title; int lo, hi, step; } items[ITEM_COUNT] =
   [ITEM_SCENE]  = { "END SCENE",    0, SCENE_COUNT - 1, 1 },
   [ITEM_SCENE_S]= { "SCENE TIME",   0, 600, 5 },
   [ITEM_THEN]   = { "AFTER SCENE",  0, 1,   1 },
+  [ITEM_CD_DAYS]= { "CD DAYS",      0, 1,   1 },
   [ITEM_BRIGHT] = { "BRIGHTNESS",   MATRIX_BRIGHTNESS_MIN, 100, 5 },
 };
 
@@ -44,6 +45,7 @@ static int P_Get(int i)
     case ITEM_SCENE:  return plan.scene;
     case ITEM_SCENE_S:return plan.scene_s;
     case ITEM_THEN:   return plan.then;
+    case ITEM_CD_DAYS:return Settings_GetDays(0);
     default:          return Matrix_GetBrightness();
   }
 }
@@ -61,6 +63,7 @@ static void P_Set(int i, int v)
     case ITEM_SCENE:  plan.scene = (uint8_t)v; break;
     case ITEM_SCENE_S:plan.scene_s = (uint16_t)v; break;
     case ITEM_THEN:   plan.then = (uint8_t)v; break;
+    case ITEM_CD_DAYS:Settings_SetDays(0, (uint8_t)v); break;
     default:
       Matrix_SetBrightness((uint8_t)v);            /* visible right away */
       Settings_BrightnessChanged();
@@ -85,6 +88,7 @@ static void P_Draw(void)
       else snprintf(value, sizeof value, "< %d S >", typed >= 0 ? typed : v);
       break;
     case ITEM_THEN:   snprintf(value, sizeof value, "< %s >", v ? "END SCREEN" : "HOLD 0:00"); break;
+    case ITEM_CD_DAYS:snprintf(value, sizeof value, "< %s >", v ? "49D LABEL" : "LABEL ONLY"); break;
     default:          snprintf(value, sizeof value, "< %d %% >", typed >= 0 ? typed : v); break;
   }
   Matrix_SetTextColor(MTX_C_WHITE);

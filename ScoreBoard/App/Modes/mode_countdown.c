@@ -16,6 +16,7 @@
 #include "clock_calc.h"
 #include "ee_record.h"
 #include "keys.h"
+#include "settings.h"
 #include "log.h"
 #include "cmsis_os.h"
 #include <stdio.h>
@@ -196,7 +197,7 @@ static void P_Update(void)
       big_color = RED;
       snprintf(text, text_len, "%s", cfg.cd_end[0] ? cfg.cd_end : label);
     }
-    else if (days > 0u)
+    else if (days > 0u && Settings_GetDays(countup))   /* "49D LABEL" (cd days on) */
     {
       snprintf(text, text_len, label[0] ? "%luD %s" : "%lu DAYS", (unsigned long)days, label);
     }

@@ -460,6 +460,11 @@ class App(ctk.CTk):
         ctk.CTkLabel(f, text="Text at zero").grid(row=2, column=0, sticky="w", padx=10)
         self.cd_end = ctk.CTkEntry(f, width=380)
         self.cd_end.grid(row=2, column=1, padx=6, pady=4)
+        self.cd_days = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(f, text="Show days with the label (49D LABEL)", variable=self.cd_days,
+                        command=lambda: self.run(f"cd days {'on' if self.cd_days.get() else 'off'}",
+                                                 note="Countdown label setting saved", refresh=self._load_timers)
+                        ).grid(row=3, column=1, sticky="w", padx=6, pady=(4, 10))
         ctk.CTkButton(f, text="Save texts", command=lambda: self.run(
             [f"cd label {quote(self.cd_label.get())}", f"cd end {quote(self.cd_end.get())}"],
             note="Countdown texts saved", refresh=self._load_timers)).grid(row=1, column=2, rowspan=2, padx=10)
@@ -542,6 +547,11 @@ class App(ctk.CTk):
         ctk.CTkButton(f, text="Save", command=lambda: self.run(
             f"cu label {quote(self.cu_label.get())}", note="Label saved", refresh=self._load_timers)
                       ).grid(row=1, column=1, padx=6, pady=(4, 12))
+        self.cu_days = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(f, text="Show days with the label", variable=self.cu_days,
+                        command=lambda: self.run(f"cu days {'on' if self.cu_days.get() else 'off'}",
+                                                 note="Count-up label setting saved", refresh=self._load_timers)
+                        ).grid(row=2, column=0, sticky="w", padx=10, pady=(0, 10))
 
         f = self._section(tab, "")
         ctk.CTkButton(f, text="Show count-up", command=lambda: self.run("mode countup", refresh=self.refresh_status)
@@ -572,6 +582,8 @@ class App(ctk.CTk):
             for entry, value in ((self.cd_date, d), (self.cd_time, t)):
                 entry.delete(0, "end")
                 entry.insert(0, value)
+        self.cd_days.set(cd.get("days", "on") == "on")
+        self.cu_days.set(cu.get("days", "on") == "on")
         self.cu_info.configure(text=f"start {cu.get('start', '-')}   elapsed {cu.get('elapsed', '-')}   {cu.get('state', '')}")
 
     # ------------------------------------------------------------ Messages
@@ -819,14 +831,14 @@ class App(ctk.CTk):
             if m:
                 big = m.group(2)
                 days = int(m.group(1))
-                text = (f"{days}D {label}" if label else f"{days} DAYS") if days else label
+                text = (f"{days}D {label}" if label else f"{days} DAYS") if days and self.cd.get("days", "on") == "on" else label
         elif screen == "countup":
             m = re.match(r"(\d+)d (\S+)", self.cu.get("elapsed", ""))
             label = self.cu.get("label", "")
             if m:
                 big = m.group(2)
                 days = int(m.group(1))
-                text = (f"{days}D {label}" if label else f"{days} DAYS") if days else label
+                text = (f"{days}D {label}" if label else f"{days} DAYS") if days and self.cu.get("days", "on") == "on" else label
         else:
             big = "00:00:00"
             text = self.cd.get("end", "") or self.cd.get("label", "")

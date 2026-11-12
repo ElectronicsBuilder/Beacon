@@ -14,6 +14,8 @@
 #define SETTINGS_ADDR_BRIGHTNESS  0x0F01u
 #define SETTINGS_ADDR_MODE        0x0F02u
 #define SETTINGS_ADDR_RTC_TRIM    0x0F03u
+#define SETTINGS_ADDR_CD_DAYS     0x0F04u
+#define SETTINGS_ADDR_CU_DAYS     0x0F05u
 #define SETTINGS_MARKER           0xB7u
 #define SETTINGS_SAVE_DELAY_MS    2000u
 
@@ -22,6 +24,7 @@ static uint32_t save_at_ms;
 static int      saved_mode = -1;
 static uint8_t  mode_value = 0xFFu;
 static uint8_t  trim_value = 0xFFu;
+static uint8_t  days_value[2] = { 0xFFu, 0xFFu };   /* countdown, count-up */
 
 void Settings_Load(void)
 {
@@ -37,6 +40,10 @@ void Settings_Load(void)
   }
   int16_t trim = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_RTC_TRIM);
   if (trim >= 0) trim_value = (uint8_t)trim;
+  int16_t days = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_CD_DAYS);
+  if (days >= 0) days_value[0] = (uint8_t)days;
+  days = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_CU_DAYS);
+  if (days >= 0) days_value[1] = (uint8_t)days;
   int16_t mode = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_MODE);
   if (mode >= 0 && mode < 0xFF)
   {
@@ -78,6 +85,17 @@ void Settings_SetRtcTrim(uint8_t on)
   P_Changed();
 }
 
+int Settings_GetDays(int countup)
+{
+  return days_value[countup ? 1 : 0] != 0u;
+}
+
+void Settings_SetDays(int countup, uint8_t on)
+{
+  days_value[countup ? 1 : 0] = on ? 1u : 0u;
+  P_Changed();
+}
+
 static void P_Write(uint16_t addr, uint8_t value)
 {
   if (Eeprom24_ReadByte(EE24_ADDR_0, addr) != value)
@@ -94,6 +112,8 @@ void Settings_Poll(void)
     P_Write(SETTINGS_ADDR_BRIGHTNESS, Matrix_GetBrightness());
     P_Write(SETTINGS_ADDR_MODE, mode_value);
     P_Write(SETTINGS_ADDR_RTC_TRIM, trim_value);
+    P_Write(SETTINGS_ADDR_CD_DAYS, days_value[0]);
+    P_Write(SETTINGS_ADDR_CU_DAYS, days_value[1]);
     P_Write(SETTINGS_ADDR_MARKER, SETTINGS_MARKER);
   }
 }

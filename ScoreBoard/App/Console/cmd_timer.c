@@ -25,6 +25,7 @@
 #include "clock.h"
 #include "clock_calc.h"
 #include "screen_layout.h"
+#include "settings.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -162,6 +163,8 @@ static int P_Cd(int argc, char **argv)
       P_Show(Mode_Find("countdown"));
     }
     else if (strcmp(argv[1], "label") == 0 && argc == 3) Timer_SetCountdownLabel(argv[2]);
+    else if (strcmp(argv[1], "days") == 0 && argc == 3 && (!strcmp(argv[2], "on") || !strcmp(argv[2], "off")))
+      Settings_SetDays(0, strcmp(argv[2], "on") == 0);
     else if (strcmp(argv[1], "end") == 0 && argc == 3)   Timer_SetCountdownEnd(argv[2]);
     else if (strcmp(argv[1], "clear") == 0)
     {
@@ -183,6 +186,7 @@ static int P_Cd(int argc, char **argv)
   P_PrintTime("target", c->cd_target);
   P_PrintDuration("remaining", Timer_Remaining(&secs), secs);
   Cli_Printf("label=%s", c->cd_label);
+  Cli_Printf("days=%s", Settings_GetDays(0) ? "on" : "off");
   Cli_Printf("end=%s", c->cd_end);
   return 0;
 }
@@ -211,6 +215,8 @@ static int P_Cu(int argc, char **argv)
     else if (strcmp(argv[1], "stop") == 0)                Timer_StopCountup();
     else if (strcmp(argv[1], "resume") == 0)              Timer_ResumeCountup();
     else if (strcmp(argv[1], "label") == 0 && argc == 3)  Timer_SetCountupLabel(argv[2]);
+    else if (strcmp(argv[1], "days") == 0 && argc == 3 && (!strcmp(argv[2], "on") || !strcmp(argv[2], "off")))
+      Settings_SetDays(1, strcmp(argv[2], "on") == 0);
     else if (strcmp(argv[1], "clear") == 0)
     {
       Timer_StartCountup(0);
@@ -223,6 +229,7 @@ static int P_Cu(int argc, char **argv)
   P_PrintDuration("elapsed", Timer_Elapsed(&secs), secs);
   Cli_Printf("state=%s", c->cu_start == 0u ? "none" : (c->cu_stopped_at ? "stopped" : "running"));
   Cli_Printf("label=%s", c->cu_label);
+  Cli_Printf("days=%s", Settings_GetDays(1) ? "on" : "off");
   return 0;
 }
 
@@ -232,7 +239,8 @@ static const CliCommand timer_commands[] = {
     "cd set [YYYY-MM-DD] HH:MM[:SS]  count down to a date/time (today if no date)\n"
     "cd in 1h30m                     count down for a duration: d h m s, e.g. 2d, 45s,\n"
     "                                90 (= minutes)\n"
-    "cd label \"NEW YEAR\"             text with the days while counting (\"\" = none)\n"
+    "cd label \"NEW YEAR\"             text while counting (\"\" = none)\n"
+    "cd days on|off                  days before the label (49D NEW YEAR) or label only\n"
     "cd end \"HAPPY NEW YEAR\"         text at zero (\"\" = none)\n"
     "cd after                        what happens at zero:\n"
     "cd after scene <name> [s|inf]   fireworks stars confetti snow rainbow none;\n"
@@ -252,6 +260,7 @@ static const CliCommand timer_commands[] = {
     "                                    shows STARTS hh:mm)\n"
     "cu stop | cu resume                 pause / continue from the shown time\n"
     "cu label \"SHIFT\"                    text with the time\n"
+    "cu days on|off                      days before the label, or label only\n"
     "cu clear                            remove the count-up\n"
     "Starting it switches to Count-up mode. Keyboard (F4): Enter = setup (start,\n"
     "label), T start, L label, S stop/resume, R restart." },

@@ -30,6 +30,7 @@
 #include "commands.h"
 #include "mode.h"
 #include "rtc_trim.h"
+#include "clock.h"
 #include "countdown.h"
 #include "msg_store.h"
 #include "screen_layout.h"
