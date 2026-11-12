@@ -244,25 +244,27 @@ static void P_SlotTick(int b, Slot *s, const char *big, uint8_t big_color, const
     case BAND_BIG:
     {
       size_t n = strlen(big);
-      int32_t adv = (n * 16u <= (size_t)WIDTH) ? 16 : 14;      /* "49D 05:12": 9 characters */
-      int32_t x0 = (WIDTH - (int32_t)n * adv + (adv - 16)) / 2;
+      /* days ("49D05:12"): the hourglass takes one more 14 px slot after the minutes */
+      int hourglass = hg_top >= 0 && strchr(big, 'D') != NULL && n <= 8u;
+      size_t slots = n + (hourglass ? 1u : 0u);
+      int32_t adv = (!hourglass && slots * 16u <= (size_t)WIDTH) ? 16 : 14;
+      int32_t x0 = (WIDTH - (int32_t)slots * adv + (adv - 16)) / 2;
       int redraw = strcmp(big, s->big) != 0 || big_color != s->big_color;
       if (redraw)
       {
-        if (n != strlen(s->big)) P_ClearRows(s->y, 16);          /* format changed (days) */
+        if (n != strlen(s->big) || hourglass != (s->hg_drawn != -2)) P_ClearRows(s->y, 16);   /* layout changed */
         strncpy(s->big, big, sizeof s->big - 1u);
         s->big_color = big_color;
         uint8_t bc = Screen_Colors(screen)->big;
         if (big_color == RED || bc == SCREEN_COLOR_AUTO) CHANGE_FONT(big_color);
         else Matrix_SetTextColor((MatrixColor)bc);
         calculateLEDStringScaledAdv(big, x0, s->y, Font8x8, 2, adv);
-        s->hg_drawn = -1;
+        s->hg_drawn = hourglass ? -1 : -2;                       /* -2: no hourglass shown */
       }
-      const char *gap = strstr(big, "D ");                       /* "49D 05:12": hourglass in the gap */
-      if (gap != NULL && hg_top >= 0 && hg_top != s->hg_drawn)
+      if (hourglass && hg_top != s->hg_drawn)                    /* after the minutes */
       {
-        int32_t slot = x0 + (int32_t)(gap + 1 - big) * adv;
-        P_Hourglass(slot + (adv - HG_W) / 2, s->y, hg_top, b);
+        int32_t slot = x0 + (int32_t)n * adv;
+        P_Hourglass(slot + (adv - HG_W) / 2 + 1, s->y, hg_top, b);
         s->hg_drawn = (int8_t)hg_top;
       }
       break;

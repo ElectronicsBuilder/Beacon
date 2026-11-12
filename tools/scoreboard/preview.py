@@ -184,13 +184,13 @@ def render_screen(layout: dict, data: PreviewData, rows: int = 32, top_fault: bo
             big_rgb = RGB["red"] if data.big_red else RGB.get(data.big_colour, RGB["white"])
             if kind == "big":
                 n = len(data.big)
-                adv = 16 if n * 16 <= WIDTH else 14              # "49D 05:12": 9 characters
-                x0 = (WIDTH - n * adv + (adv - 16)) // 2
+                hourglass = "D" in data.big and n <= 8              # "49D05:12" + hourglass
+                slots = n + (1 if hourglass else 0)
+                adv = 16 if not hourglass and slots * 16 <= WIDTH else 14
+                x0 = (WIDTH - slots * adv + (adv - 16)) // 2
                 m.text(data.big, x0, y, big_rgb, bg, 2, advance=adv)
-                gap = data.big.find("D ")
-                if gap >= 0:
-                    slot = x0 + (gap + 1) * adv
-                    draw_hourglass(m, slot + (adv - HG_W) // 2, y, data.seconds, bg, top_white)
+                if hourglass:
+                    draw_hourglass(m, x0 + n * adv + (adv - HG_W) // 2 + 1, y, data.seconds, bg, top_white)
             elif kind == "time":
                 c = RGB["red"] if data.big_red else (big_rgb if data.big_colour != "auto" else col("white"))
                 m.line(data.big, y + 4 if full else y, c, bg)

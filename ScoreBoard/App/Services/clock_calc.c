@@ -149,8 +149,7 @@ uint32_t ClockCalc_FormatBig(uint32_t secs, char *buf, size_t len)
   uint32_t days = secs / 86400u;
   unsigned h = (unsigned)(secs / 3600u % 24u), m = (unsigned)(secs / 60u % 60u);
   if (days == 0u)       ClockCalc_FormatDuration(secs, buf, len);
-  else if (days < 100u)  snprintf(buf, len, "%luD %02u:%02u", (unsigned long)days, h, m);
   else if (days < 1000u) snprintf(buf, len, "%luD%02u:%02u", (unsigned long)days, h, m);
-  else                   snprintf(buf, len, "%luD %02uH", (unsigned long)days, h);
+  else                   snprintf(buf, len, "%luD%02uH", (unsigned long)days, h);
   return days;
 }

@@ -29,11 +29,9 @@ def _big(days: int, hms: str) -> str:
     h, m = hms.split(":")[:2]
     if days == 0:
         return hms
-    if days < 100:
-        return f"{days}D {h}:{m}"
     if days < 1000:
         return f"{days}D{h}:{m}"
-    return f"{days}D {h}H"
+    return f"{days}D{h}H"
 
 
 # ---------------------------------------------------------------- worker thread
