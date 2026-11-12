@@ -243,7 +243,11 @@ static void P_ScreenPrint(int s)
   }
   char ids[100];
   Screen_FormatMessages(l->msg_mask, ids, sizeof ids);
-  snprintf(text + n, sizeof text - (size_t)n, " msgs=%s", ids);
+  n += snprintf(text + n, sizeof text - (size_t)n, " msgs=%s", ids);
+  const ScreenColors *sc = Screen_Colors((ScreenId)s);
+  snprintf(text + n, sizeof text - (size_t)n, " big=%s text=%s",
+           sc->big == SCREEN_COLOR_AUTO ? "auto" : Matrix_ColorName((MatrixColor)sc->big),
+           sc->text == SCREEN_COLOR_AUTO ? "auto" : Matrix_ColorName((MatrixColor)sc->text));
   Cli_Printf("%s", text);
 }
 
@@ -255,6 +259,16 @@ static int P_Screen(int argc, char **argv)
     int s = Screen_Find(argv[1]);
     uint8_t top, bottom;
     if (s < 0) return Cli_Error("screen: clock, countdown, countup or end");
+    if (argc == 5 && (strcmp(argv[2], "colour") == 0 || strcmp(argv[2], "color") == 0))
+    {
+      int text = strcmp(argv[3], "text") == 0;
+      if (!text && strcmp(argv[3], "big") != 0) return Cli_Error("screen <s> colour big|text <colour|auto>");
+      int c = strcmp(argv[4], "auto") == 0 ? SCREEN_COLOR_AUTO : Matrix_ColorFind(argv[4]);
+      if (c < 0 || c == MTX_C_BLACK) return Cli_Error("colours: auto white red green blue yellow cyan magenta");
+      Screen_SetColor((ScreenId)s, text, (uint8_t)c);
+      P_ScreenPrint(s);
+      return 0;
+    }
     if (argc >= 3 && strcmp(argv[2], "msgs") == 0)
     {
       uint32_t mask;
@@ -395,6 +409,8 @@ static const CliCommand system_commands[] = {
     "screen <s> <line> bg <colour>      background: black white red green blue yellow\n"
     "                                  cyan magenta (lines 1-2: blue stays on, HW fault)\n"
     "screen <s> msgs all|none|<ids>     messages on this screen: screen clock msgs none\n"
+    "screen <s> colour big|text <c>     colour of the big digits / the text line: auto (default)\n"
+    "                                  white red green blue yellow cyan magenta\n"
     "The end screen is shown after a countdown (cd after then screen).\n"
     "Lines 2 and 4 need the HUB75 E line (MATRIX_PANEL_ROWS=64)." },
   { "key", "<key> ...", "press USB keyboard keys", P_Key,

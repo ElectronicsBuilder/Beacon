@@ -28,12 +28,44 @@ RGB = {
 BG_LEVEL = 0.35                     # backgrounds are dimmed (MATRIX_BG_LEVEL 0x60, gamma)
 
 
+HG_HW = (4, 4, 4, 3, 2, 1, 1, 1, 1, 1, 1, 2, 3, 4, 4, 4)   # hourglass outline (ui_bands.c)
+HG_W = 9
+
+
+def draw_hourglass(m: "Matrix", x0: int, y0: int, top: int, bg: tuple, white_glass: bool) -> None:
+    """Same drawing as the firmware: top = seconds of sand left in the top bulb."""
+    cells = sum(2 * HG_HW[r] - 1 for r in range(1, 7))
+    in_top = (top * cells + 30) // 60
+    in_bottom = cells - in_top
+    g = 0xC0 if white_glass else 0x70
+    for r in range(16):
+        for c in range(HG_W):
+            d = abs(c - HG_W // 2)
+            if r in (0, 15) or d == HG_HW[r]:
+                m.set(x0 + c, y0 + r, (g, g, g))
+            else:
+                m.set(x0 + c, y0 + r, bg)
+    for rows, left in ((range(6, 0, -1), in_top), (range(14, 8, -1), in_bottom)):
+        for r in rows:
+            for d in range(HG_HW[r]):
+                for side in (-1, 1):
+                    if left <= 0 or (d == 0 and side > 0):
+                        continue
+                    m.set(x0 + HG_W // 2 + side * d, y0 + r, (255, 190, 0))
+                    left -= 1
+    if in_top > 0 and top < 60:
+        m.set(x0 + HG_W // 2, y0 + 7 + top % 2, (255, 190, 0))
+
+
 @dataclass
 class PreviewData:
     big: str = "12:34:56"           # big / time items
     big_red: bool = False           # countdown at zero
     text: str = "SUN 2026-11-09"    # text / ticker items
     messages: list = field(default_factory=list)   # [(line1, line2, colour)]
+    seconds: int = 30               # hourglass: sand in the top bulb (big digits with days)
+    big_colour: str = "auto"
+    text_colour: str = "auto"
 
 
 class Matrix:
@@ -149,15 +181,22 @@ def render_screen(layout: dict, data: PreviewData, rows: int = 32, top_fault: bo
         slots = [(parts[0], y0, True)] if len(parts) == 1 else [(parts[0], y0, False), (parts[1], y0 + 8, False)]
         for kind, y, full in slots:
             col = lambda name: RGB["white"] if top_white else RGB.get(name, RGB["white"])
+            big_rgb = RGB["red"] if data.big_red else RGB.get(data.big_colour, RGB["white"])
             if kind == "big":
                 n = len(data.big)
                 adv = 16 if n * 16 <= WIDTH else 14              # "49D 05:12": 9 characters
-                m.text(data.big, (WIDTH - n * adv + (adv - 16)) // 2, y,
-                       RGB["red"] if data.big_red else RGB["white"], bg, 2, advance=adv)
+                x0 = (WIDTH - n * adv + (adv - 16)) // 2
+                m.text(data.big, x0, y, big_rgb, bg, 2, advance=adv)
+                gap = data.big.find("D ")
+                if gap >= 0:
+                    slot = x0 + (gap + 1) * adv
+                    draw_hourglass(m, slot + (adv - HG_W) // 2, y, data.seconds, bg, top_white)
             elif kind == "time":
-                m.line(data.big, y + 4 if full else y, RGB["red"] if data.big_red and not top_white else col("white"), bg)
+                c = RGB["red"] if data.big_red else (big_rgb if data.big_colour != "auto" else col("white"))
+                m.line(data.big, y + 4 if full else y, c, bg)
             elif kind in ("text", "ticker"):
-                m.line(data.text, y + 4 if full else y, col("green"), bg)
+                c = RGB.get(data.text_colour) if data.text_colour != "auto" else col("green")
+                m.line(data.text, y + 4 if full else y, c, bg)
             elif kind == "msg":
                 msg = next_msg()
                 if msg is None:

@@ -15,6 +15,7 @@
  *   0x0F00..0x0F0F  settings (Eeprom/settings.c)
  *   0x0F10..0x0F5F  screen layouts and their messages (Modes/screen_layout.c)
  *   0x0F80..0x0F8F  countdown end plan (Modes/mode_countdown.c)
+ *   0x0FA0..0x0FAF  big digit / text colours per screen (Modes/screen_layout.c)
  *   0x0FFF          spare, used by the size detection (Eeprom24_Size)
  *   0x1000..end     more message slots on EEPROMs larger than 4 KB
  */
@@ -28,6 +29,7 @@
 #define EE_RECORD_MSGCFG_ADDR  0x0EC0u
 #define EE_RECORD_SCREEN_ADDR  0x0F10u
 #define EE_RECORD_ENDPLAN_ADDR 0x0F80u
+#define EE_RECORD_SCRCOLOR_ADDR 0x0FA0u
 
 int EeRecord_Load(uint16_t addr, void *data, size_t len);        /* 0 = ok */
 int EeRecord_Save(uint16_t addr, const void *data, size_t len);  /* 0 = ok */

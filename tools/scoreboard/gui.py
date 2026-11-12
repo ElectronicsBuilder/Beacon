@@ -774,6 +774,12 @@ class App(ctk.CTk):
         self.scr_msgs = ctk.CTkEntry(f, width=160, placeholder_text="all / none / 1 3 5")
         self.scr_msgs.grid(row=5, column=2, columnspan=2, padx=6, sticky="w")
         self.scr_msgs.bind("<KeyRelease>", lambda _e: self._update_screen_preview())
+        ctk.CTkLabel(f, text="Big digits colour").grid(row=6, column=0, columnspan=2, padx=8, pady=(0, 8), sticky="w")
+        self.scr_big = ctk.CTkOptionMenu(f, values=["auto"] + COLOURS, width=120, command=lambda _v: self._update_screen_preview())
+        self.scr_big.grid(row=6, column=2, columnspan=2, padx=6, pady=(0, 8), sticky="w")
+        ctk.CTkLabel(f, text="Text colour").grid(row=7, column=0, columnspan=2, padx=8, pady=(0, 8), sticky="w")
+        self.scr_text = ctk.CTkOptionMenu(f, values=["auto"] + COLOURS, width=120, command=lambda _v: self._update_screen_preview())
+        self.scr_text.grid(row=7, column=2, columnspan=2, padx=6, pady=(0, 8), sticky="w")
         ctk.CTkButton(f, text="Apply to the board", command=self._screen_apply).grid(row=5, column=4, padx=8)
 
         self.scr_note = ctk.CTkLabel(tab, text="", text_color="gray60", justify="left")
@@ -798,6 +804,8 @@ class App(ctk.CTk):
             bg.set(cfg["bg"][i])
         self.scr_msgs.delete(0, "end")
         self.scr_msgs.insert(0, cfg["msgs"].replace(",", " "))
+        self.scr_big.set(cfg.get("big", "auto"))
+        self.scr_text.set(cfg.get("text", "auto"))
         self._split_changed()
 
     def _split_changed(self) -> None:
@@ -821,6 +829,8 @@ class App(ctk.CTk):
         cmds += [f"screen {s} {i + 1} bg {c}" for i, c in enumerate(layout["bg"])]
         msgs = self.scr_msgs.get().strip() or "all"
         cmds.append(f"screen {s} msgs {msgs}")
+        cmds.append(f"screen {s} colour big {self.scr_big.get()}")
+        cmds.append(f"screen {s} colour text {self.scr_text.get()}")
 
         def reload():
             self.worker.submit(self.sb.screens, lambda r: (setattr(self, "screens", r), self._fill_screen_form()))
@@ -861,7 +871,9 @@ class App(ctk.CTk):
         elif want and want != "all":
             ids = {int(x) for x in re.findall(r"\d+", want)}
             msgs = [m for m in msgs if m.id in ids]
-        return PreviewData(big=big, text=text, messages=[(m.line1, m.line2, m.colour) for m in msgs])
+        return PreviewData(big=big, text=text, messages=[(m.line1, m.line2, m.colour) for m in msgs],
+                           big_colour=self.scr_big.get() if hasattr(self, "scr_big") else "auto",
+                           text_colour=self.scr_text.get() if hasattr(self, "scr_text") else "auto")
 
     def _update_screen_preview(self) -> None:
         if not hasattr(self, "scr_rows"):

@@ -16,6 +16,10 @@
 
 static ScreenLayout layouts[SCREEN_COUNT] = { LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_END };
 static uint32_t changes;
+static ScreenColors colors[SCREEN_COUNT] = {
+  { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO }, { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO },
+  { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO }, { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO },
+};
 
 static const char *const screen_names[SCREEN_COUNT] = { "clock", "countdown", "countup", "end" };
 static const char *const kind_names[BAND_KIND_COUNT] = { "off", "big", "text", "ticker", "msg", "time" };
@@ -36,8 +40,20 @@ static void P_Save(void)
   }
 }
 
+static int P_ColorOk(uint8_t c)
+{
+  return c == SCREEN_COLOR_AUTO || (c < MTX_C_COUNT && c != MTX_C_BLACK);
+}
+
 void Screen_Load(void)
 {
+  ScreenColors sc[SCREEN_COUNT];
+  if (EeRecord_Load(EE_RECORD_SCRCOLOR_ADDR, sc, sizeof sc) == 0)
+  {
+    int ok = 1;
+    for (int s = 0; s < SCREEN_COUNT; s++) ok &= P_ColorOk(sc[s].big) && P_ColorOk(sc[s].text);
+    if (ok) memcpy(colors, sc, sizeof colors);
+  }
   ScreenLayout saved[SCREEN_COUNT];
   if (EeRecord_Load(EE_RECORD_SCREEN_ADDR, saved, sizeof saved) != 0) return;
   for (int s = 0; s < SCREEN_COUNT; s++)
@@ -110,6 +126,23 @@ void Screen_FormatMessages(uint32_t mask, char *text, size_t len)
   {
     if (mask & (1uL << i)) n += (size_t)snprintf(text + n, len - n, "%s%d", n ? "," : "", i + 1);
   }
+}
+
+const ScreenColors *Screen_Colors(ScreenId s)
+{
+  return &colors[s < SCREEN_COUNT ? s : SCREEN_CLOCK];
+}
+
+int Screen_SetColor(ScreenId s, int text, uint8_t color)
+{
+  if (s >= SCREEN_COUNT || !P_ColorOk(color)) return -1;
+  if (text) colors[s].text = color; else colors[s].big = color;
+  changes++;
+  if (EeRecord_Save(EE_RECORD_SCRCOLOR_ADDR, colors, sizeof colors) != 0)
+  {
+    LOG_E("Screen colours: EEPROM write failed");
+  }
+  return 0;
 }
 
 uint32_t Screen_Changes(void)       { return changes; }

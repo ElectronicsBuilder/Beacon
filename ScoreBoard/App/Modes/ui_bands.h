@@ -14,4 +14,9 @@ void Bands_Enter(ScreenId screen);               /* after the screen was cleared
  * text: date or label; ticker: 0 = no messages over the text (e.g. countdown end). */
 void Bands_Tick(const char *big, uint8_t big_color, const char *text, int ticker);
 
+/* Seconds for the hourglass drawn in the gap of "49D 05:12" (the big digits
+ * have no seconds when days are shown): sand left in the top bulb, 0..60;
+ * -1 = no hourglass. */
+void Bands_SetSeconds(int top_seconds);
+
 #endif

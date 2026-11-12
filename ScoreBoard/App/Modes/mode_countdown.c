@@ -192,6 +192,8 @@ static void P_Update(void)
   else
   {
     uint32_t days = ClockCalc_FormatBig(secs, big, sizeof big);   /* "49D 05:12" */
+    /* hourglass: sand left this minute (countdown: remaining s, count-up: 60 - elapsed s) */
+    Bands_SetSeconds(days > 0u ? (int)(countup ? 60u - secs % 60u : secs % 60u) : -1);
     if (!countup && secs == 0u)
     {
       big_color = RED;
@@ -237,7 +239,8 @@ static void P_Update(void)
   if (at_zero && P_Now(&now) == 0)
   {
     uint32_t since = now - cfg.cd_target;
-    ClockCalc_FormatBig(since, since_big, sizeof since_big);
+    if (ClockCalc_FormatBig(since, since_big, sizeof since_big) > 0u && !countup)
+      Bands_SetSeconds((int)(60u - since % 60u));
     snprintf(end_text, sizeof end_text, "%s", cfg.cd_end[0] ? cfg.cd_end : cfg.cd_label);
     if (dismissed_target == cfg.cd_target) want = VIEW_NORMAL;   /* cleared by the user */
     else if (EndPlan_Phase(&plan, since) == END_PHASE_SCENE) want = VIEW_SCENE;
