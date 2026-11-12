@@ -87,7 +87,7 @@ void Settings_SetRtcTrim(uint8_t on)
 
 int Settings_GetDays(int countup)
 {
-  return days_value[countup ? 1 : 0] != 0u;
+  return days_value[countup ? 1 : 0] == 1u;     /* default (0xFF) off: the big digits show the days */
 }
 
 void Settings_SetDays(int countup, uint8_t on)

@@ -6,7 +6,7 @@
  *   0x0F01  LED matrix brightness in percent
  *   0x0F02  display mode (index in the mode table, 0xFF = not saved)
  *   0x0F03  RTC trim: 0 = off (CubeMX default), else on (0xFF = never set: on)
- *   0x0F04  countdown: days before the label ("49D LABEL"): 0 = off, else on
+ *   0x0F04  countdown: days before the label ("49D LABEL"): 1 = on, else off
  *   0x0F05  count-up: the same
  */
 #ifndef APP_SETTINGS_H

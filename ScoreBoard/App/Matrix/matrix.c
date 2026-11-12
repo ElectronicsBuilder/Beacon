@@ -264,7 +264,11 @@ void calculateLEDString(char *s, int32_t x, int32_t y, sFONT font){
 /* Like calculateLEDString(), with every font pixel drawn as a scale x scale block
  * (e.g. Font8x8 at scale 2 = 16x16 characters). Clipped to the image. */
 void calculateLEDStringScaled(const char *s, int32_t x, int32_t y, sFONT font, uint8_t scale){
-        for (; *s; s++, x += (int32_t)font.Width * scale) {
+        calculateLEDStringScaledAdv(s, x, y, font, scale, (int32_t)font.Width * scale);
+}
+
+void calculateLEDStringScaledAdv(const char *s, int32_t x, int32_t y, sFONT font, uint8_t scale, int32_t advance){
+        for (; *s; s++, x += advance) {
                 if (*s < 32 || *s > 126) continue;
                 for (int32_t i = 0; i < (int32_t)font.Height; i++) {
                         uint16_t bits = font.table[(*s - 32) * font.Height + i];

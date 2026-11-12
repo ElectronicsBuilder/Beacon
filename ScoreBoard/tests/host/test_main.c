@@ -230,6 +230,13 @@ static void test_seconds_and_durations(void)
   CHECK(ClockCalc_FormatDuration(3u * 86400u + 3661u, hms, sizeof hms) == 3 && strcmp(hms, "01:01:01") == 0);
   CHECK(ClockCalc_FormatDuration(86399u, hms, sizeof hms) == 0 && strcmp(hms, "23:59:59") == 0);
 
+  char big[12];
+  CHECK(ClockCalc_FormatBig(3600u + 120u + 3u, big, sizeof big) == 0 && strcmp(big, "01:02:03") == 0);
+  CHECK(ClockCalc_FormatBig(49u * 86400u + 5u * 3600u + 12u * 60u + 33u, big, sizeof big) == 49 && strcmp(big, "49D 05:12") == 0);
+  CHECK(ClockCalc_FormatBig(123u * 86400u + 5u * 3600u + 9u * 60u, big, sizeof big) == 123 && strcmp(big, "123D05:09") == 0);
+  CHECK(ClockCalc_FormatBig(1234u * 86400u + 7u * 3600u, big, sizeof big) == 1234 && strcmp(big, "1234D 07H") == 0);
+  CHECK(strlen(big) <= 9u);
+
   uint32_t secs;
   CHECK(ClockCalc_ParseDuration("1h30m", &secs) == 0 && secs == 5400u);
   CHECK(ClockCalc_ParseDuration("2d", &secs) == 0 && secs == 172800u);

@@ -172,10 +172,13 @@ static void P_SlotTick(int b, Slot *s, const char *big, uint8_t big_color, const
     case BAND_BIG:
       if (strcmp(big, s->big) != 0 || big_color != s->big_color)
       {
+        size_t n = strlen(big);
+        int32_t adv = (n * 16u <= (size_t)WIDTH) ? 16 : 14;    /* "49D 05:12": 9 characters */
+        if (n != strlen(s->big)) P_ClearRows(s->y, 16);          /* format changed (days) */
         strncpy(s->big, big, sizeof s->big - 1u);
         s->big_color = big_color;
         CHANGE_FONT(big_color);
-        calculateLEDStringScaled(big, LAYOUT_CENTER_X(strlen(big), 16), s->y, Font8x8, 2);
+        calculateLEDStringScaledAdv(big, (WIDTH - (int32_t)n * adv + (adv - 16)) / 2, s->y, Font8x8, 2, adv);
       }
       break;
     case BAND_TIME:

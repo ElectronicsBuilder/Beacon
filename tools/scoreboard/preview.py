@@ -52,7 +52,8 @@ class Matrix:
             for x in range(WIDTH):
                 self.set(x, yy, c)
 
-    def text(self, s: str, x: int, y: int, fg: tuple, bg: tuple | None = None, scale: int = 1) -> None:
+    def text(self, s: str, x: int, y: int, fg: tuple, bg: tuple | None = None, scale: int = 1,
+             advance: int | None = None) -> None:
         for ch in s:
             code = ord(ch) - FIRST
             rows = FONT[code] if 0 <= code < len(FONT) else FONT[0]
@@ -63,7 +64,7 @@ class Matrix:
                         for dy in range(scale):
                             for dx in range(scale):
                                 self.set(x + c * scale + dx, y + r * scale + dy, fg if on else bg)
-            x += 8 * scale
+            x += advance or 8 * scale
 
     def line(self, s: str, y: int, fg: tuple, bg: tuple) -> None:
         """One 8 px row: centred, or the start of a scrolling text."""
@@ -149,7 +150,10 @@ def render_screen(layout: dict, data: PreviewData, rows: int = 32, top_fault: bo
         for kind, y, full in slots:
             col = lambda name: RGB["white"] if top_white else RGB.get(name, RGB["white"])
             if kind == "big":
-                m.text(data.big, (WIDTH - len(data.big) * 16) // 2, y, RGB["red"] if data.big_red else RGB["white"], bg, 2)
+                n = len(data.big)
+                adv = 16 if n * 16 <= WIDTH else 14              # "49D 05:12": 9 characters
+                m.text(data.big, (WIDTH - n * adv + (adv - 16)) // 2, y,
+                       RGB["red"] if data.big_red else RGB["white"], bg, 2, advance=adv)
             elif kind == "time":
                 m.line(data.big, y + 4 if full else y, RGB["red"] if data.big_red and not top_white else col("white"), bg)
             elif kind in ("text", "ticker"):

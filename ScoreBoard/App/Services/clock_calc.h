@@ -21,6 +21,10 @@ void     ClockCalc_FromSeconds(uint32_t secs, ClockTime *t);
 /* "HH:MM:SS" of the time within the day into hms; returns the whole days */
 uint32_t ClockCalc_FormatDuration(uint32_t secs, char *hms, size_t len);
 
+/* Big digits of a countdown / count-up: "05:12:33" under one day, then
+ * "49D 05:12", "123D05:12", "1234D 05H" (at most 9 characters); returns the days */
+uint32_t ClockCalc_FormatBig(uint32_t secs, char *buf, size_t len);
+
 /* "1h30m", "2d", "45s", "90" (bare number = minutes) -> seconds; 0 = ok */
 int      ClockCalc_ParseDuration(const char *s, uint32_t *secs);
 
