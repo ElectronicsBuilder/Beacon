@@ -27,6 +27,7 @@ typedef struct {
   char     big[12];
   uint8_t  big_color;
   int8_t   hg_drawn;         /* hourglass seconds shown, -1 = none */
+  int32_t  hg_x;             /* where the hourglass goes (after the minutes) */
   char     joined[2 * MSG_LINE_MAX + 4];   /* one-row message: both lines */
 } Slot;
 
@@ -82,7 +83,7 @@ static void P_Px(int32_t x, int32_t y, uint8_t r, uint8_t g, uint8_t b)
 /* top = seconds of sand left in the top bulb (0..60): the top bulb (rows
  * 1-6) drains from its surface, the bottom bulb (rows 9-14) fills from below,
  * a grain falls through the neck every other second while sand runs. */
-static void P_Hourglass(int32_t x0, int32_t y0, int top, int band)
+static void P_Hourglass(int32_t x0, int32_t y0, int top, int band, uint8_t sr, uint8_t sg, uint8_t sb)
 {
   const struct color bg = background_color;
   int cells = 0;
@@ -118,7 +119,7 @@ static void P_Hourglass(int32_t x0, int32_t y0, int top, int band)
         for (int side = -1; side <= 1 && left > 0; side += 2)
         {
           if (d == 0 && side > 0) continue;
-          P_Px(x0 + HG_W / 2 + side * d, y0 + r, 255, 190, 0);
+          P_Px(x0 + HG_W / 2 + side * d, y0 + r, sr, sg, sb);
           left--;
         }
       }
@@ -127,8 +128,59 @@ static void P_Hourglass(int32_t x0, int32_t y0, int top, int band)
   if (in_top > 0 && in_bottom >= 0 && top < 60)         /* falling grain */
   {
     int r = 7 + (top % 2);
-    P_Px(x0 + HG_W / 2, y0 + r, 255, 190, 0);
+    P_Px(x0 + HG_W / 2, y0 + r, sr, sg, sb);
   }
+}
+
+/* ------------------------------------------------------------ big digits */
+
+/* Big digits (8x8 font at double size) with tight spacing: a digit or letter
+ * uses font columns 1-6 (12 px), the colon column 3 (2 px) with 3 px either
+ * side, a space is 6 px, other gaps 2 px. "49D 05:12" + hourglass = 121 px. */
+#define BIG_SCALE 2
+#define BIG_GAP   2
+#define HG_GAP    4
+
+static int32_t P_BigW(char c)   { return c == ':' ? 2 : c == ' ' ? 6 : 12; }
+static int32_t P_BigGap(char a, char b) { return (a == ':' || b == ':') ? 3 : BIG_GAP; }
+
+static int32_t P_BigWidth(const char *s, int hourglass)
+{
+  int32_t w = 0;
+  for (size_t i = 0; s[i]; i++)
+  {
+    if (i > 0) w += P_BigGap(s[i - 1], s[i]);
+    w += P_BigW(s[i]);
+  }
+  return w + (hourglass ? HG_GAP + HG_W : 0);
+}
+
+/* draws s at x, y; returns the x after the last character */
+static int32_t P_BigDraw(const char *s, int32_t x, int32_t y)
+{
+  const struct color fg = foreground_color, bg = background_color;
+  for (size_t i = 0; s[i]; i++)
+  {
+    char c = s[i];
+    if (i > 0) x += P_BigGap(s[i - 1], c);
+    int first = (c == ':') ? 3 : 1, last = (c == ':') ? 3 : 6;
+    if (c != ' ' && c >= 32 && c <= 126)
+    {
+      const uint16_t *rows = &Font8x8.table[(c - 32) * Font8x8.Height];
+      for (int r = 0; r < 8; r++)
+      {
+        for (int col = first; col <= last; col++)
+        {
+          const struct color *p = ((rows[r] >> (7 - col)) & 1u) ? &fg : &bg;
+          for (int dy = 0; dy < BIG_SCALE; dy++)
+            for (int dx = 0; dx < BIG_SCALE; dx++)
+              P_Px(x + (col - first) * BIG_SCALE + dx, y + r * BIG_SCALE + dy, p->R, p->G, p->B);
+        }
+      }
+    }
+    x += P_BigW(c);
+  }
+  return x;
 }
 
 void Bands_SetSeconds(int top_seconds)
@@ -243,28 +295,33 @@ static void P_SlotTick(int b, Slot *s, const char *big, uint8_t big_color, const
   {
     case BAND_BIG:
     {
-      size_t n = strlen(big);
-      /* days ("49D05:12"): the hourglass takes one more 14 px slot after the minutes */
-      int hourglass = hg_top >= 0 && strchr(big, 'D') != NULL && n <= 8u;
-      size_t slots = n + (hourglass ? 1u : 0u);
-      int32_t adv = (!hourglass && slots * 16u <= (size_t)WIDTH) ? 16 : 14;
-      int32_t x0 = (WIDTH - (int32_t)slots * adv + (adv - 16)) / 2;
+      /* days ("49D 05:12"): no seconds, an hourglass after the minutes instead */
+      int hourglass = hg_top >= 0 && strchr(big, 'D') != NULL;
+      int32_t w = P_BigWidth(big, hourglass);
+      if (w > WIDTH) { hourglass = 0; w = P_BigWidth(big, 0); }
+      int32_t x0 = (WIDTH - w) / 2;
       int redraw = strcmp(big, s->big) != 0 || big_color != s->big_color;
       if (redraw)
       {
-        if (n != strlen(s->big) || hourglass != (s->hg_drawn != -2)) P_ClearRows(s->y, 16);   /* layout changed */
+        P_ClearRows(s->y, 16);                                   /* tight layout: positions move */
         strncpy(s->big, big, sizeof s->big - 1u);
         s->big_color = big_color;
         uint8_t bc = Screen_Colors(screen)->big;
         if (big_color == RED || bc == SCREEN_COLOR_AUTO) CHANGE_FONT(big_color);
         else Matrix_SetTextColor((MatrixColor)bc);
-        calculateLEDStringScaledAdv(big, x0, s->y, Font8x8, 2, adv);
-        s->hg_drawn = hourglass ? -1 : -2;                       /* -2: no hourglass shown */
+        s->hg_x = P_BigDraw(big, x0, s->y) + HG_GAP;
+        s->hg_drawn = -1;
       }
       if (hourglass && hg_top != s->hg_drawn)                    /* after the minutes */
       {
-        int32_t slot = x0 + (int32_t)n * adv;
-        P_Hourglass(slot + (adv - HG_W) / 2 + 1, s->y, hg_top, b);
+        uint8_t sc = Screen_Colors(screen)->sand;
+        uint8_t r = 255, g = 190, bl = 0;                         /* auto: amber */
+        if (sc != SCREEN_COLOR_AUTO)
+        {
+          Matrix_SetTextColor((MatrixColor)sc);
+          r = foreground_color.R; g = foreground_color.G; bl = foreground_color.B;
+        }
+        P_Hourglass(s->hg_x, s->y, hg_top, b, r, g, bl);
         s->hg_drawn = (int8_t)hg_top;
       }
       break;

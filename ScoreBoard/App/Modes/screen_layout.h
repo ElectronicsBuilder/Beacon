@@ -53,6 +53,7 @@ typedef struct {
 typedef struct {
   uint8_t big;                      /* MatrixColor or SCREEN_COLOR_AUTO */
   uint8_t text;
+  uint8_t sand;                     /* hourglass sand (auto = amber) */
 } ScreenColors;
 
 void Screen_Load(void);                                 /* at boot */
@@ -61,7 +62,7 @@ int  Screen_SetBand(ScreenId s, int band, uint8_t top, uint8_t bottom);   /* ban
 int  Screen_SetBackground(ScreenId s, int band, uint8_t color);           /* saved; 0 = ok */
 int  Screen_SetMessages(ScreenId s, uint32_t mask);                        /* saved; 0 = ok */
 const ScreenColors *Screen_Colors(ScreenId s);
-int  Screen_SetColor(ScreenId s, int text, uint8_t color);                 /* text 0 = big; saved */
+int  Screen_SetColor(ScreenId s, int which, uint8_t color);                /* 0 big, 1 text, 2 sand; saved */
 /* "all", "none" or "1 3 5" <-> mask; parse takes the words after "msgs" */
 int  Screen_ParseMessages(int argc, char **argv, uint32_t *mask);
 void Screen_FormatMessages(uint32_t mask, char *text, size_t len);

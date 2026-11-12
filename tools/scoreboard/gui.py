@@ -30,8 +30,8 @@ def _big(days: int, hms: str) -> str:
     if days == 0:
         return hms
     if days < 1000:
-        return f"{days}D{h}:{m}"
-    return f"{days}D{h}H"
+        return f"{days}D {h}:{m}"
+    return f"{days}D {h}H"
 
 
 # ---------------------------------------------------------------- worker thread
@@ -778,6 +778,9 @@ class App(ctk.CTk):
         ctk.CTkLabel(f, text="Text colour").grid(row=7, column=0, columnspan=2, padx=8, pady=(0, 8), sticky="w")
         self.scr_text = ctk.CTkOptionMenu(f, values=["auto"] + COLOURS, width=120, command=lambda _v: self._update_screen_preview())
         self.scr_text.grid(row=7, column=2, columnspan=2, padx=6, pady=(0, 8), sticky="w")
+        ctk.CTkLabel(f, text="Hourglass colour").grid(row=8, column=0, columnspan=2, padx=8, pady=(0, 8), sticky="w")
+        self.scr_sand = ctk.CTkOptionMenu(f, values=["auto"] + COLOURS, width=120, command=lambda _v: self._update_screen_preview())
+        self.scr_sand.grid(row=8, column=2, columnspan=2, padx=6, pady=(0, 8), sticky="w")
         ctk.CTkButton(f, text="Apply to the board", command=self._screen_apply).grid(row=5, column=4, padx=8)
 
         self.scr_note = ctk.CTkLabel(tab, text="", text_color="gray60", justify="left")
@@ -804,6 +807,7 @@ class App(ctk.CTk):
         self.scr_msgs.insert(0, cfg["msgs"].replace(",", " "))
         self.scr_big.set(cfg.get("big", "auto"))
         self.scr_text.set(cfg.get("text", "auto"))
+        self.scr_sand.set(cfg.get("sand", "auto"))
         self._split_changed()
 
     def _split_changed(self) -> None:
@@ -829,6 +833,7 @@ class App(ctk.CTk):
         cmds.append(f"screen {s} msgs {msgs}")
         cmds.append(f"screen {s} colour big {self.scr_big.get()}")
         cmds.append(f"screen {s} colour text {self.scr_text.get()}")
+        cmds.append(f"screen {s} colour hourglass {self.scr_sand.get()}")
 
         def reload():
             self.worker.submit(self.sb.screens, lambda r: (setattr(self, "screens", r), self._fill_screen_form()))
@@ -871,7 +876,8 @@ class App(ctk.CTk):
             msgs = [m for m in msgs if m.id in ids]
         return PreviewData(big=big, text=text, messages=[(m.line1, m.line2, m.colour) for m in msgs],
                            big_colour=self.scr_big.get() if hasattr(self, "scr_big") else "auto",
-                           text_colour=self.scr_text.get() if hasattr(self, "scr_text") else "auto")
+                           text_colour=self.scr_text.get() if hasattr(self, "scr_text") else "auto",
+                           sand_colour=self.scr_sand.get() if hasattr(self, "scr_sand") else "auto")
 
     def _update_screen_preview(self) -> None:
         if not hasattr(self, "scr_rows"):

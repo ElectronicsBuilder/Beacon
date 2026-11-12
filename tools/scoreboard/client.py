@@ -189,6 +189,8 @@ class ScoreBoard:
                 msgs = mm.group(1)
             cb = re.search(r"big=(\w+)", m.group(2))
             ct = re.search(r"text=(\w+)", m.group(2))
+            ch = re.search(r"hourglass=(\w+)", m.group(2))
             out[m.group(1)] = {"lines": items, "bg": bgs, "msgs": msgs,
-                               "big": cb.group(1) if cb else "auto", "text": ct.group(1) if ct else "auto"}
+                               "big": cb.group(1) if cb else "auto", "text": ct.group(1) if ct else "auto",
+                               "sand": ch.group(1) if ch else "auto"}
         return out

@@ -17,8 +17,8 @@
 static ScreenLayout layouts[SCREEN_COUNT] = { LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_DEFAULT, LAYOUT_END };
 static uint32_t changes;
 static ScreenColors colors[SCREEN_COUNT] = {
-  { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO }, { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO },
-  { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO }, { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO },
+  { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO }, { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO },
+  { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO }, { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO },
 };
 
 static const char *const screen_names[SCREEN_COUNT] = { "clock", "countdown", "countup", "end" };
@@ -51,7 +51,7 @@ void Screen_Load(void)
   if (EeRecord_Load(EE_RECORD_SCRCOLOR_ADDR, sc, sizeof sc) == 0)
   {
     int ok = 1;
-    for (int s = 0; s < SCREEN_COUNT; s++) ok &= P_ColorOk(sc[s].big) && P_ColorOk(sc[s].text);
+    for (int s = 0; s < SCREEN_COUNT; s++) ok &= P_ColorOk(sc[s].big) && P_ColorOk(sc[s].text) && P_ColorOk(sc[s].sand);
     if (ok) memcpy(colors, sc, sizeof colors);
   }
   ScreenLayout saved[SCREEN_COUNT];
@@ -133,10 +133,12 @@ const ScreenColors *Screen_Colors(ScreenId s)
   return &colors[s < SCREEN_COUNT ? s : SCREEN_CLOCK];
 }
 
-int Screen_SetColor(ScreenId s, int text, uint8_t color)
+int Screen_SetColor(ScreenId s, int which, uint8_t color)
 {
   if (s >= SCREEN_COUNT || !P_ColorOk(color)) return -1;
-  if (text) colors[s].text = color; else colors[s].big = color;
+  if (which == 1) colors[s].text = color;
+  else if (which == 2) colors[s].sand = color;
+  else colors[s].big = color;
   changes++;
   if (EeRecord_Save(EE_RECORD_SCRCOLOR_ADDR, colors, sizeof colors) != 0)
   {

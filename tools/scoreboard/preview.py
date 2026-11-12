@@ -32,7 +32,8 @@ HG_HW = (4, 4, 4, 3, 2, 1, 1, 1, 1, 1, 1, 2, 3, 4, 4, 4)   # hourglass outline (
 HG_W = 9
 
 
-def draw_hourglass(m: "Matrix", x0: int, y0: int, top: int, bg: tuple, white_glass: bool) -> None:
+def draw_hourglass(m: "Matrix", x0: int, y0: int, top: int, bg: tuple, white_glass: bool,
+                   sand: tuple = (255, 190, 0)) -> None:
     """Same drawing as the firmware: top = seconds of sand left in the top bulb."""
     cells = sum(2 * HG_HW[r] - 1 for r in range(1, 7))
     in_top = (top * cells + 30) // 60
@@ -51,10 +52,41 @@ def draw_hourglass(m: "Matrix", x0: int, y0: int, top: int, bg: tuple, white_gla
                 for side in (-1, 1):
                     if left <= 0 or (d == 0 and side > 0):
                         continue
-                    m.set(x0 + HG_W // 2 + side * d, y0 + r, (255, 190, 0))
+                    m.set(x0 + HG_W // 2 + side * d, y0 + r, sand)
                     left -= 1
     if in_top > 0 and top < 60:
-        m.set(x0 + HG_W // 2, y0 + 7 + top % 2, (255, 190, 0))
+        m.set(x0 + HG_W // 2, y0 + 7 + top % 2, sand)
+
+
+def _big_w(c: str) -> int:
+    return 2 if c == ":" else 6 if c == " " else 12
+
+
+def _big_gap(a: str, b: str) -> int:
+    return 3 if ":" in (a, b) else 2
+
+
+def big_width(s: str, hourglass: bool) -> int:
+    w = sum(_big_w(c) for c in s) + sum(_big_gap(a, b) for a, b in zip(s, s[1:]))
+    return w + (4 + HG_W if hourglass else 0)
+
+
+def draw_big(m: "Matrix", s: str, x: int, y: int, fg: tuple, bg: tuple) -> int:
+    """Tight big digits (ui_bands.c P_BigDraw); returns x after the text."""
+    for i, c in enumerate(s):
+        if i:
+            x += _big_gap(s[i - 1], c)
+        first, last = (3, 3) if c == ":" else (1, 6)
+        code = ord(c) - FIRST
+        if c != " " and 0 <= code < len(FONT):
+            for r, bits in enumerate(FONT[code]):
+                for col in range(first, last + 1):
+                    on = bits & (0x80 >> col)
+                    for dy in range(2):
+                        for dx in range(2):
+                            m.set(x + (col - first) * 2 + dx, y + r * 2 + dy, fg if on else bg)
+        x += _big_w(c)
+    return x
 
 
 @dataclass
@@ -66,6 +98,7 @@ class PreviewData:
     seconds: int = 30               # hourglass: sand in the top bulb (big digits with days)
     big_colour: str = "auto"
     text_colour: str = "auto"
+    sand_colour: str = "auto"
 
 
 class Matrix:
@@ -183,14 +216,12 @@ def render_screen(layout: dict, data: PreviewData, rows: int = 32, top_fault: bo
             col = lambda name: RGB["white"] if top_white else RGB.get(name, RGB["white"])
             big_rgb = RGB["red"] if data.big_red else RGB.get(data.big_colour, RGB["white"])
             if kind == "big":
-                n = len(data.big)
-                hourglass = "D" in data.big and n <= 8              # "49D05:12" + hourglass
-                slots = n + (1 if hourglass else 0)
-                adv = 16 if not hourglass and slots * 16 <= WIDTH else 14
-                x0 = (WIDTH - slots * adv + (adv - 16)) // 2
-                m.text(data.big, x0, y, big_rgb, bg, 2, advance=adv)
+                hourglass = "D" in data.big and big_width(data.big, True) <= WIDTH
+                x0 = (WIDTH - big_width(data.big, hourglass)) // 2
+                end = draw_big(m, data.big, x0, y, big_rgb, bg)
                 if hourglass:
-                    draw_hourglass(m, x0 + n * adv + (adv - HG_W) // 2 + 1, y, data.seconds, bg, top_white)
+                    sand = RGB.get(data.sand_colour, (255, 190, 0)) if data.sand_colour != "auto" else (255, 190, 0)
+                    draw_hourglass(m, end + 4, y, data.seconds, bg, top_white, sand)
             elif kind == "time":
                 c = RGB["red"] if data.big_red else (big_rgb if data.big_colour != "auto" else col("white"))
                 m.line(data.big, y + 4 if full else y, c, bg)
