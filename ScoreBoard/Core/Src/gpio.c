@@ -71,6 +71,9 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(RADIO_EN_GPIO_Port, RADIO_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, FLASH_WP_Pin|FLASH_HOLD_Pin|SPI4_CS_Pin|FLASH_CE_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
@@ -79,8 +82,10 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, EE_WP_Pin|OLED_RES_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : LED_GREEN_Pin LED_ORANGE_Pin LED_RED_Pin LED_BLUE_Pin */
-  GPIO_InitStruct.Pin = LED_GREEN_Pin|LED_ORANGE_Pin|LED_RED_Pin|LED_BLUE_Pin;
+  /*Configure GPIO pins : LED_GREEN_Pin LED_ORANGE_Pin LED_RED_Pin LED_BLUE_Pin
+                           FLASH_WP_Pin FLASH_HOLD_Pin SPI4_CS_Pin FLASH_CE_Pin */
+  GPIO_InitStruct.Pin = LED_GREEN_Pin|LED_ORANGE_Pin|LED_RED_Pin|LED_BLUE_Pin
+                          |FLASH_WP_Pin|FLASH_HOLD_Pin|SPI4_CS_Pin|FLASH_CE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -121,16 +126,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : FLASH_WP_Pin FLASH_HOLD_Pin SPI4_CS_Pin SPI4_SCK_Pin
-                           SPI4_MISO_Pin SPI4_MOSI_Pin FLASH_CE_Pin WIFI_TXD_Pin
-                           WIFI_RXD_Pin */
-  GPIO_InitStruct.Pin = FLASH_WP_Pin|FLASH_HOLD_Pin|SPI4_CS_Pin|SPI4_SCK_Pin
-                          |SPI4_MISO_Pin|SPI4_MOSI_Pin|FLASH_CE_Pin|WIFI_TXD_Pin
-                          |WIFI_RXD_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
   /*Configure GPIO pins : OLED_CS_Pin OLED_DC_Pin */
   GPIO_InitStruct.Pin = OLED_CS_Pin|OLED_DC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -150,6 +145,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : WIFI_TXD_Pin WIFI_RXD_Pin */
+  GPIO_InitStruct.Pin = WIFI_TXD_Pin|WIFI_RXD_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
 }
 

@@ -106,6 +106,7 @@ int main(void)
   MX_RNG_Init();
   MX_TIM8_Init();
   MX_UART7_Init();
+  MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

@@ -69,6 +69,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     App/Game
     App/Modes
     App/Ble
+    App/Flash
 )
 
 # Add project symbols (macros)

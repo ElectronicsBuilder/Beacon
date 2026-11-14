@@ -8,6 +8,7 @@ void CmdSystem_Register(void);   /* info, status, log, bright, time, echo, keys,
 void CmdGame_Register(void);
 void CmdTimer_Register(void);
 void CmdMsg_Register(void);
-void CmdBle_Register(void);     /* game players, game stats */
+void CmdBle_Register(void);
+void CmdFlash_Register(void);     /* game players, game stats */
 
 #endif

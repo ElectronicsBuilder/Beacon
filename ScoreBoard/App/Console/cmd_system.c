@@ -19,6 +19,7 @@
 #include "msg_store.h"
 #include "screen_layout.h"
 #include "hm11.h"
+#include "w25q.h"
 #include "cmsis_os.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +63,7 @@ static int P_Info(int argc, char **argv)
   Cli_Printf("matrix=%ux%u", (unsigned)WIDTH, (unsigned)HEIGHT);
   Cli_Printf("top_fault=%d", LAYOUT_TOP_HALF_WHITE_ONLY);
   Cli_Printf("eeprom=%s", eeprom_ok ? "ok" : "missing");
+  Cli_Printf("flash=%s", Flash_Present() ? "ok" : "none");
   return 0;
 }
 

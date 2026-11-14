@@ -35,6 +35,7 @@
 #include "msg_store.h"
 #include "screen_layout.h"
 #include "hm11.h"
+#include "w25q.h"
 #include "version.h"
 #include "cmsis_os.h"
 
@@ -88,6 +89,7 @@ void App_Init(void)
   EE_TEST();
   Settings_Load();              // saved brightness and display mode
   RtcTrim_Init();               // RTC accuracy: LSI measured against the crystal
+  Flash_Init();                 // SPI flash (W25Q16) on SPI4
   Clock_Init();                 // power was off? then the time is behind ("SYNC TIME")
   RTC_Configuration();          // game timer (TM mm:ss)
 
@@ -151,6 +153,7 @@ void App_Init(void)
   CmdTimer_Register();
   CmdMsg_Register();
   CmdBle_Register();
+  CmdFlash_Register();
   Cli_Init();
   Ble_Init();                   // HM-11 Bluetooth: second console port
 }
