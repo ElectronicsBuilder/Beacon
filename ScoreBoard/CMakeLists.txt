@@ -72,10 +72,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add project symbols (macros)
-# LED panel rows driven: 32 = HUB75 E line (pin 8) tied to GND, lines 1 and 3
-# of the 64-row panels light up; 64 = E line wired to PC2, all 4 lines.
-# Change with: cmake --preset Debug -DMATRIX_PANEL_ROWS=64
-set(MATRIX_PANEL_ROWS 32 CACHE STRING "LED panel rows driven (32 or 64)")
+# LED panel rows driven: 64 = E line (HUB75 pin 8) wired to PC2, all 4 lines
+# (the board since the MCU replacement); 32 = E tied to GND (old board,
+# lines 1 and 3 only). Change with: cmake --preset Debug -DMATRIX_PANEL_ROWS=32
+set(MATRIX_PANEL_ROWS 64 CACHE STRING "LED panel rows driven (32 or 64)")
 set_property(CACHE MATRIX_PANEL_ROWS PROPERTY STRINGS 32 64)
 
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE

@@ -199,6 +199,7 @@ static const char keys_help[] =
   "  F1..F5     modes: 1 ping-pong, 2 clock, 3 countdown, 4 count-up, 5 messages\n"
   "  F12        settings menu: Up/Down item, Left/Right or digits change, Enter/ESC close\n"
   "             (message gap/time, ticker, order, countdown end scene, brightness)\n"
+  "  F11        full display test (~30 s, any key stops it)\n"
   "  + / -      brightness\n"
   "Clock:       T or Enter = set the date and time\n"
   "Countdown:   Enter = setup (end time, label, end text), T = time only,\n"

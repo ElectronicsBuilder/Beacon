@@ -37,6 +37,7 @@ const AppMode *Mode_Current(void);
 int  Mode_Select(int index);               /* 0 = ok; switch and save */
 void Mode_Tick(void);
 void Mode_Key(uint8_t key);
+void Mode_StartTest(void);                 /* full display test (display_test.c) */
 
 /* the modes (mode_*.c) */
 extern const AppMode mode_pingpong;

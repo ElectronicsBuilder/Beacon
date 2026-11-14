@@ -12,6 +12,7 @@
 #define KB_ESC      0x1Bu
 #define KB_F1       0x81u          /* F1..F12 = 0x81..0x8C */
 #define KB_F8       0x88u
+#define KB_F11      0x8Bu
 #define KB_F12      0x8Cu
 #define KB_RIGHT    0x90u
 #define KB_LEFT     0x91u

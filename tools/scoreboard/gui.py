@@ -88,7 +88,8 @@ class App(ctk.CTk):
         self.cd: dict[str, str] = {}
         self.cu: dict[str, str] = {}
         self.editing_id: int | None = None
-        self.rows = 32
+        self.rows = 64              # until the board says otherwise (info: matrix=128x64)
+        self.top_fault = False      # info: top_fault=1 on the old board
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -297,6 +298,8 @@ class App(ctk.CTk):
         def done(r):
             self.info = r["info"]
             self.rows = 64 if self.info.get("matrix", "").endswith("x64") else 32
+            self.top_fault = self.info.get("top_fault", "0") == "1"
+            self._msg_preview()
             self._apply_status(r["status"])
             self.messages, self.msg_settings = r["msgs"]
             self.screens = r["screens"]
@@ -367,6 +370,10 @@ class App(ctk.CTk):
                           command=lambda m=mode: self.run(f"mode {m}", note=f"Showing {titles[m]}",
                                                           refresh=self.refresh_status)
                           ).grid(row=1, column=i, padx=6, pady=(4, 12))
+
+        ctk.CTkButton(f, text="Display test (30 s)", width=150, height=44, fg_color="gray30",
+                      command=lambda: self.run("test", note="Display test running (any key stops it)")
+                      ).grid(row=2, column=0, padx=6, pady=(0, 12))
 
         f = self._section(tab, "Brightness")
         self.bright = ctk.CTkSlider(f, from_=5, to=100, number_of_steps=19, width=520,
@@ -647,7 +654,7 @@ class App(ctk.CTk):
         ctk.CTkButton(row, text="New", width=70, fg_color="gray30", command=self._msg_new).pack(side="left", padx=4)
         for e in (self.msg_l1, self.msg_l2):
             e.bind("<KeyRelease>", lambda _e: self._msg_preview())
-        ctk.CTkLabel(right, text="Preview (Messages mode, as on this board):", text_color="gray60").pack(anchor="w", padx=10, pady=(8, 0))
+        ctk.CTkLabel(right, text="Preview (Messages mode, as on the board):", text_color="gray60").pack(anchor="w", padx=10, pady=(8, 0))
         self.msg_preview = ctk.CTkLabel(right, text="")
         self.msg_preview.pack(padx=10, pady=6)
         self._msg_preview()
@@ -734,7 +741,8 @@ class App(ctk.CTk):
         if any(len(t) > 40 for t in (l1, l2)):
             hints.append("too long: 40 characters per line")
         self.msg_hint.configure(text="\n".join(hints))
-        img = render_message(l1, l2, self.msg_colour.get(), self.rows).image(PREVIEW_SCALE)
+        img = render_message(l1, l2, self.msg_colour.get(), self.rows, self.top_fault).image(
+            PREVIEW_SCALE, self.top_fault)
         self._msg_img = ctk.CTkImage(light_image=img, dark_image=img, size=img.size)
         self.msg_preview.configure(image=self._msg_img)
 
@@ -883,7 +891,8 @@ class App(ctk.CTk):
         if not hasattr(self, "scr_rows"):
             return
         screen = self._screen_key()
-        img = render_screen(self._screen_layout(), self._preview_data(screen), self.rows).image(PREVIEW_SCALE)
+        img = render_screen(self._screen_layout(), self._preview_data(screen), self.rows, self.top_fault).image(
+            PREVIEW_SCALE, self.top_fault)
         self._scr_img = ctk.CTkImage(light_image=img, dark_image=img, size=img.size)
         self.scr_preview.configure(image=self._scr_img)
         note = "Lines 2 and 4 stay dark on this board (HUB75 E line not wired)." if self.rows == 32 else ""

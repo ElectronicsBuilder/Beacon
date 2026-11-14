@@ -9,6 +9,7 @@
 #include "ui_time_edit.h"
 #include "ui_text_edit.h"
 #include "ui_menu.h"
+#include "display_test.h"
 #include <string.h>
 
 /* Append new games/screens at the end (the saved mode is the index). */
@@ -74,8 +75,25 @@ int Mode_Select(int index)
   return 0;
 }
 
+void Mode_StartTest(void)
+{
+  if (DisplayTest_Active()) return;
+  if (current >= 0) modes[current]->exit();
+  DisplayTest_Start();
+}
+
 void Mode_Tick(void)
 {
+  if (DisplayTest_Active())
+  {
+    if (DisplayTest_Tick() && current >= 0)     /* finished: the mode draws its screen again */
+    {
+      calculateClearImage();
+      CHANGE_FONT(BLUE);
+      modes[current]->enter();
+    }
+    return;
+  }
   if (Menu_Active())
   {
     Menu_Tick();
@@ -93,6 +111,16 @@ void Mode_Key(uint8_t key)
   {
     return;
   }
+  if (DisplayTest_Active())                      /* any key stops the display test */
+  {
+    DisplayTest_Stop();
+    if (current >= 0)
+    {
+      CHANGE_FONT(BLUE);
+      modes[current]->enter();
+    }
+    return;
+  }
   if (Menu_Active())                             /* settings menu (F12) has the keys */
   {
     if (Menu_Key(key) && current >= 0)
@@ -101,6 +129,11 @@ void Mode_Key(uint8_t key)
       CHANGE_FONT(BLUE);
       modes[current]->enter();
     }
+    return;
+  }
+  if (key == KB_F11 && !TimeEdit_Active() && !TextEdit_Active())   /* full display test */
+  {
+    Mode_StartTest();
     return;
   }
   if (key == KB_F12 && !TimeEdit_Active() && !TextEdit_Active())

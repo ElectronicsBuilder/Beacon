@@ -7,6 +7,7 @@
 #include "version.h"
 #include "clock.h"
 #include "matrix.h"
+#include "layout.h"
 #include "settings.h"
 #include "EEPROM.h"
 #include "GAME.h"
@@ -59,6 +60,7 @@ static int P_Info(int argc, char **argv)
   Cli_Printf("build=%s %s", __DATE__, __TIME__);
   Cli_Printf("mcu=STM32F429VIT6");
   Cli_Printf("matrix=%ux%u", (unsigned)WIDTH, (unsigned)HEIGHT);
+  Cli_Printf("top_fault=%d", LAYOUT_TOP_HALF_WHITE_ONLY);
   Cli_Printf("eeprom=%s", eeprom_ok ? "ok" : "missing");
   return 0;
 }
@@ -360,6 +362,15 @@ static int P_Key(int argc, char **argv)
   return 0;
 }
 
+/* test: full display test */
+static int P_Test(int argc, char **argv)
+{
+  (void)argc; (void)argv;
+  Mode_StartTest();
+  Cli_Printf("display test running (about 30 s, any key stops it)");
+  return 0;
+}
+
 /* reboot */
 static int P_Reboot(int argc, char **argv)
 {
@@ -425,6 +436,10 @@ static const CliCommand system_commands[] = {
     "        Ping-pong: a/b player 1 +1/-1, c/d player 2 +1/-1, s start, x save,\n"
     "        / | pause/resume. Other modes: the keys of that mode (help keys).\n"
     "        ESC returns to the console." },
+  { "test", "", "full display test (~30 s)", P_Test,
+    "test    red, green, blue, white; the 4 lines labelled; colour bars; gradient;\n"
+    "        checkerboard; a line over every row, then every column. Then the\n"
+    "        shown mode comes back. Any key (or key esc) stops it." },
   { "reboot", "", "restart the board", P_Reboot,
     "reboot  restart (settings, messages, countdown and time are kept)" },
 };
