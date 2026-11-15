@@ -29,3 +29,7 @@ __pycache__/
 # GUI theme, generated at start-up
 tools/scoreboard/assets/vscode_dark.json
 tools/dist/
+
+# Kept locally, not published (2016 reference code, schematic)
+Existing_Code/
+Schematic/

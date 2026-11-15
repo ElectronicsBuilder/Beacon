@@ -73,7 +73,6 @@ void EE_TEST(void)
 		  LOG_I("EEPROM ok");
 
 		   //store_to_eeprom_single(0, 10)
-		  //  store_to_eeprom("PLAYER A", 100);
 		 // store_to_eeprom("BEST PLAYER", 120);
 	  }
 

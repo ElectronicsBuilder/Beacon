@@ -117,7 +117,7 @@ void App_Init(void)
   GAME.STATUS = idle;
   GAME.START = 0;
 
-  /* LED matrix: logos, then "BEACON" */
+  /* LED matrix: logos, then the name */
   initLEDdata();
   calculateClearImage();
   updateLEDData();
@@ -130,9 +130,7 @@ void App_Init(void)
   calculateClearImage();
   updateLEDData();
   CHANGE_FONT(BLUE);
-  calculateLEDString("BEACON", 0, 0, Font8x8);
-  CHANGE_FONT(RED);
-  calculateLEDString("LLC", 32, 16, Font8x8);
+  calculateLEDString("BEACON", (WIDTH - 6 * 8) / 2, (HEIGHT - 8) / 2, Font8x8);
   calculateLEDdata();
   DELAY_MILLI(1000);
 

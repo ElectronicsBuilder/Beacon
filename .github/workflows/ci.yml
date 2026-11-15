@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    name: Firmware (${{ matrix.rows }} rows)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        rows: [64, 32]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Arm GNU toolchain
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '13.3.Rel1'
+
+      - name: CMake and Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build cmake
+
+      - name: Build
+        working-directory: ScoreBoard
+        run: |
+          cmake --preset Debug -DMATRIX_PANEL_ROWS=${{ matrix.rows }}
+          cmake --build --preset Debug 2>&1 | tee build.log
+          arm-none-eabi-size build/Debug/ScoreBoard.elf
+          arm-none-eabi-objcopy -O binary build/Debug/ScoreBoard.elf build/Debug/Beacon.bin
+          arm-none-eabi-objcopy -O ihex   build/Debug/ScoreBoard.elf build/Debug/Beacon.hex
+
+      - name: No compiler warnings in App/
+        working-directory: ScoreBoard
+        run: |
+          if grep -E "App/.*warning:" build.log; then
+            echo "::error::compiler warnings in App/"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beacon-firmware-${{ matrix.rows }}rows
+          path: |
+            ScoreBoard/build/Debug/ScoreBoard.elf
+            ScoreBoard/build/Debug/ScoreBoard.map
+            ScoreBoard/build/Debug/Beacon.bin
+            ScoreBoard/build/Debug/Beacon.hex
+          if-no-files-found: error
+
+  host-tests:
+    name: Host unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run
+        run: sh ScoreBoard/tests/host/run_tests.sh
+
+  pc-tools:
+    name: PC tools (Beacon.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Requirements
+        working-directory: tools
+        run: python -m pip install -r requirements.txt
+
+      - name: Compile check and preview smoke test
+        working-directory: tools
+        run: |
+          python -m compileall -q scoreboard
+          python -c "from scoreboard.preview import render_screen, PreviewData; m = render_screen({'lines': ['bigtext', 'msg/msg', 'big', 'msg/info'], 'bg': ['black'] * 4, 'fg': [['yellow', 'auto']] * 4, 'small': [[False, True]] * 4}, PreviewData(messages=[('HELLO', '', 'cyan')]), rows=64, top_fault=False); m.image(4, False); print('preview ok')"
+
+      - name: Build Beacon.exe
+        working-directory: tools
+        shell: pwsh
+        run: ./build_exe.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Beacon-windows
+          path: tools/dist/Beacon.exe
+          if-no-files-found: error
