@@ -10,7 +10,7 @@
  *   cu start [YYYY-MM-DD] [HH:MM[:SS]]   count up from now or a date/time
  *   cu stop | cu resume | cu label "text" | cu clear
  *   cd after                         show what happens at zero
- *   cd after scene <fireworks|stars|confetti|snow|rainbow|none> [seconds | inf]
+ *   cd after scene <name|none> [seconds | inf]   (names: see help cd)
  *   cd dismiss                       stop the scene / messages at zero (keyboard C or Del)
  *   cd after then hold|screen        after the scene: 00:00:00 + end text, or the
  *                                    "end" screen (layout: screen end ...)
@@ -97,7 +97,7 @@ static int P_After(int argc, char **argv)
   if (argc >= 4 && strcmp(argv[2], "scene") == 0 && argc <= 5)
   {
     int s = EndPlan_SceneFind(argv[3]);
-    if (s < 0) return Cli_Error("scenes: fireworks stars confetti snow rainbow none");
+    if (s < 0) return Cli_Error("scenes: fireworks stars confetti snow rainbow coderain plasma fire warp hearts balloons none");
     p.scene = (uint8_t)s;
     if (argc == 5)
     {
@@ -233,7 +233,42 @@ static int P_Cu(int argc, char **argv)
   return 0;
 }
 
+/* scene [name [seconds|inf] | stop]: try a countdown-end effect now */
+static int P_Scene(int argc, char **argv)
+{
+  if (argc >= 2 && strcmp(argv[1], "stop") == 0)
+  {
+    Mode_StopPreview();
+  }
+  else if (argc >= 2)
+  {
+    int sc = EndPlan_SceneFind(argv[1]);
+    if (sc <= SCENE_NONE) return Cli_Error("scenes: fireworks stars confetti snow rainbow coderain plasma fire warp hearts balloons");
+    uint32_t secs = 20u;
+    if (argc >= 3)
+    {
+      char *end;
+      long v = strtol(argv[2], &end, 10);
+      if (strcmp(argv[2], "inf") == 0) secs = 0u;
+      else if (*end != '\0' || v < 1 || v > 3600) return Cli_Error("seconds 1..3600 or inf");
+      else secs = (uint32_t)v;
+    }
+    if (Mode_PreviewScene(sc, secs) != 0) return Cli_Error("close the F12 menu first");
+  }
+  int now = Mode_PreviewingScene();
+  Cli_Printf("playing=%s", now ? EndPlan_SceneName((SceneId)now) : "none");
+  return 0;
+}
+
 static const CliCommand timer_commands[] = {
+  { "scene", "[name [s|inf] | stop]", "try a countdown-end effect now", P_Scene,
+    "scene                  what is playing\n"
+    "scene fire             play it for 20 s over the current screen, with the\n"
+    "                       countdown's end text (the countdown is not touched)\n"
+    "scene fire 60 | inf    for 60 s / until stopped\n"
+    "scene stop             back to the screen\n"
+    "Names: fireworks stars confetti snow rainbow coderain plasma fire warp hearts\n"
+    "balloons. Keyboard: Left / Right switch scenes, any other key stops." },
   { "cd", "[set|in|after|...]", "countdown", P_Cd,
     "cd                              show target, remaining, label, end text\n"
     "cd set [YYYY-MM-DD] HH:MM[:SS]  count down to a date/time (today if no date)\n"
@@ -244,7 +279,8 @@ static const CliCommand timer_commands[] = {
     "                                the big digits show 49D 05:12 anyway\n"
     "cd end \"HAPPY NEW YEAR\"         text at zero (\"\" = none)\n"
     "cd after                        what happens at zero:\n"
-    "cd after scene <name> [s|inf]   fireworks stars confetti snow rainbow none;\n"
+    "cd after scene <name> [s|inf]   fireworks stars confetti snow rainbow\n"
+    "                                coderain plasma fire warp hearts balloons none;\n"
     "                                s = seconds, inf = while the countdown is shown\n"
     "cd after then hold|screen       after the scene: 00:00:00 + end text, or the\n"
     "                                end screen (screen end ...)\n"

@@ -1,6 +1,7 @@
 /*
  * ui_text_line.h - one 8 px text line on the matrix: centred when it fits
  * (16 characters on 128 px), scrolling right to left when it is longer.
+ * small = 1: the tiny 3x5 font (32 characters), centred in the 8 rows.
  */
 #ifndef APP_UI_TEXT_LINE_H
 #define APP_UI_TEXT_LINE_H
@@ -18,6 +19,7 @@ typedef struct {
   uint8_t scrolling;
   uint8_t ms;
   uint16_t passes;                  /* completed scrolls (or 1 when static) */
+  uint8_t small;                    /* 1 = tiny font (set after TextLine_Init) */
 } TextLine;
 
 void TextLine_Init(TextLine *l, int32_t y, MatrixColor color);

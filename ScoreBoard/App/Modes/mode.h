@@ -38,6 +38,12 @@ int  Mode_Select(int index);               /* 0 = ok; switch and save */
 void Mode_Tick(void);
 void Mode_Key(uint8_t key);
 void Mode_StartTest(void);                 /* full display test (display_test.c) */
+/* Play a countdown-end scene now, over the current mode, with the countdown's end
+ * text on it (to try the effects). seconds 0 = until stopped. Left / Right on the
+ * keyboard switch scenes, any other key stops. Returns 0, or -1 for a bad scene. */
+int  Mode_PreviewScene(int scene, uint32_t seconds);
+void Mode_StopPreview(void);
+int  Mode_PreviewingScene(void);           /* SceneId being previewed, 0 = none */
 
 /* the modes (mode_*.c) */
 extern const AppMode mode_pingpong;

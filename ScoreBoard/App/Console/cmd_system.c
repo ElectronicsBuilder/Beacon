@@ -94,6 +94,8 @@ static int P_Status(int argc, char **argv)
   Cli_Printf("player2=%s", PLAYER2.name);
   Cli_Printf("score=%u:%u", (unsigned)PLAYER1.score, (unsigned)PLAYER2.score);
   Cli_Printf("brightness=%u", (unsigned)Matrix_GetBrightness());
+  Cli_Printf("refresh_unit=%u", (unsigned)Matrix_GetBcmUnit());
+  Cli_Printf("refresh_hz=%lu", (unsigned long)Matrix_RefreshHz());
   Cli_Printf("messages=%d/%d", MsgStore_Count(), MsgStore_Capacity());
   Cli_Printf("usb=%s", P_UsbState());
   Cli_Printf("ble=%s", Ble_StateName());
@@ -134,6 +136,34 @@ static int P_Bright(int argc, char **argv)
     Settings_BrightnessChanged();
   }
   Cli_Printf("brightness=%u", (unsigned)Matrix_GetBrightness());
+  return 0;
+}
+
+/* refresh [unit | hz <n>]: matrix refresh rate (BCM time unit, saved) */
+static int P_RefreshRate(int argc, char **argv)
+{
+  if (argc > 2 && strcmp(argv[1], "hz") == 0)
+  {
+    char *end;
+    long hz = strtol(argv[2], &end, 10);
+    if (*end != '\0' || hz < 1 || hz > 2000) return Cli_Error("hz must be 1..2000");
+    Matrix_SetRefreshHz((uint32_t)hz);
+    Settings_RefreshChanged();
+  }
+  else if (argc > 1)
+  {
+    char *end;
+    long v = strtol(argv[1], &end, 10);
+    if (*end != '\0' || (v != 0 && v < MATRIX_BCM_UNIT_MIN) || v > MATRIX_BCM_UNIT_MAX)
+    {
+      return Cli_Error("unit must be 0 (original) or %d..%d", MATRIX_BCM_UNIT_MIN, MATRIX_BCM_UNIT_MAX);
+    }
+    Matrix_SetBcmUnit((uint16_t)v);
+    Settings_RefreshChanged();
+  }
+  Cli_Printf("unit=%u", (unsigned)Matrix_GetBcmUnit());
+  Cli_Printf("refresh_hz=%lu", (unsigned long)Matrix_RefreshHz());
+  Cli_Printf("max_light=%lu%%", (unsigned long)Matrix_MaxLightPercent());
   return 0;
 }
 
@@ -233,7 +263,7 @@ static int P_Mode(int argc, char **argv)
 static void P_ScreenPrint(int s)
 {
   const ScreenLayout *l = Screen_Layout((ScreenId)s);
-  char text[160];
+  char text[320];
   int n = snprintf(text, sizeof text, "%s:", Screen_Name((ScreenId)s));
   for (int b = 0; b < SCREEN_BANDS; b++)
   {
@@ -243,6 +273,17 @@ static void P_ScreenPrint(int s)
     if (l->band[b].bg != MTX_C_BLACK)
     {
       n += snprintf(text + n, sizeof text - (size_t)n, "(bg %s)", Matrix_ColorName((MatrixColor)l->band[b].bg));
+    }
+    const RowStyle *r0 = Screen_RowStyle((ScreenId)s, b, 0), *r1 = Screen_RowStyle((ScreenId)s, b, 1);
+    if (r0->color != SCREEN_COLOR_AUTO || r1->color != SCREEN_COLOR_AUTO)
+    {
+      n += snprintf(text + n, sizeof text - (size_t)n, "(fg %s/%s)",
+                    r0->color == SCREEN_COLOR_AUTO ? "auto" : Matrix_ColorName((MatrixColor)r0->color),
+                    r1->color == SCREEN_COLOR_AUTO ? "auto" : Matrix_ColorName((MatrixColor)r1->color));
+    }
+    if (r0->small || r1->small)
+    {
+      n += snprintf(text + n, sizeof text - (size_t)n, "(small %u/%u)", r0->small, r1->small);
     }
   }
   char ids[100];
@@ -258,7 +299,7 @@ static void P_ScreenPrint(int s)
 
 static int P_Screen(int argc, char **argv)
 {
-  static const char *items = "big, time, text, ticker, msg, off, or two of them as top/bottom (time/text)";
+  static const char *items = "big, time, text, ticker, msg, bigtext, now, timer, info, date, clock, off, or two of them as top/bottom (msg/info)";
   if (argc >= 2)
   {
     int s = Screen_Find(argv[1]);
@@ -280,6 +321,36 @@ static int P_Screen(int argc, char **argv)
       uint32_t mask;
       if (Screen_ParseMessages(argc - 3, argv + 3, &mask) != 0) return Cli_Error("messages: all, none or ids 1..32");
       Screen_SetMessages((ScreenId)s, mask);
+      P_ScreenPrint(s);
+      return 0;
+    }
+    if ((argc == 5 || argc == 6) && (strcmp(argv[3], "colour") == 0 || strcmp(argv[3], "color") == 0 ||
+                                     strcmp(argv[3], "small") == 0))
+    {
+      char *end;
+      long band = strtol(argv[2], &end, 10);
+      if (*end != '\0' || band < 1 || band > SCREEN_BANDS) return Cli_Error("line 1..%d", SCREEN_BANDS);
+      int small = strcmp(argv[3], "small") == 0;
+      uint8_t v[2];
+      for (int r = 0; r < argc - 4; r++)
+      {
+        if (small)
+        {
+          if (strcmp(argv[4 + r], "on") != 0 && strcmp(argv[4 + r], "off") != 0) return Cli_Error("small on|off [on|off]");
+          v[r] = strcmp(argv[4 + r], "on") == 0;
+        }
+        else
+        {
+          int c = strcmp(argv[4 + r], "auto") == 0 ? SCREEN_COLOR_AUTO : Matrix_ColorFind(argv[4 + r]);
+          if (c < 0 || c == MTX_C_BLACK) return Cli_Error("colours: auto white red green blue yellow cyan magenta");
+          v[r] = (uint8_t)c;
+        }
+      }
+      for (int r = 0; r < argc - 4; r++)
+      {
+        if (small) Screen_SetRowSmall((ScreenId)s, (int)band - 1, r, v[r]);
+        else Screen_SetRowColor((ScreenId)s, (int)band - 1, r, v[r]);
+      }
       P_ScreenPrint(s);
       return 0;
     }
@@ -402,6 +473,13 @@ static const CliCommand system_commands[] = {
     "bright       show the brightness\n"
     "bright 40    set it, 5..100 % (saved)\n"
     "Keyboard: + / -, or F12 menu." },
+  { "refresh", "[unit | hz <n>]", "matrix refresh rate (flicker)", P_RefreshRate,
+    "refresh          show the BCM unit, refresh rate and maximum light\n"
+    "refresh hz 60    pick the unit closest to 60 Hz (about 20 .. 680 Hz)\n"
+    "refresh 23       set the unit, 2..420: smaller = faster refresh (less\n"
+    "                 flicker) but dimmer at 100 % brightness. Saved.\n"
+    "refresh 0        the original 2016 timing (~111 Hz, ~99 %)\n"
+    "                 15 ~ 410 Hz, 23 ~ 293 Hz, 31 ~ 241 Hz, 413 ~ 20 Hz" },
   { "log", "[level]", "log level", P_Log,
     "log                          show the level\n"
     "log error|warn|info|debug    show messages up to this level (default info)" },
@@ -419,10 +497,18 @@ static const CliCommand system_commands[] = {
     "screen <s> <line> <item>          s: clock countdown countup end, line: 1..4\n"
     "   items: big (HH:MM:SS 16 px)  time (HH:MM:SS 8 px)  text (date / label /\n"
     "          end text)  ticker (text, messages take turns)  msg (messages)  off\n"
+    "          bigtext (text in the big font, 16 px, scrolls when long)\n"
+    "          tiny 3x5 font: now (date + time)  date  clock (time of day)\n"
+    "          timer (countdown with seconds)  info (date + time left, timer right)\n"
     "   top/bottom splits a line in two 8 px rows: screen clock 3 time/text\n"
     "screen <s> <i1> <i2> <i3> <i4>     all 4 lines: screen countdown ticker msg big msg\n"
     "screen <s> <line> bg <colour>      background: black white red green blue yellow\n"
     "                                  cyan magenta (lines 1-2: blue stays on, HW fault)\n"
+    "screen <s> <line> colour <c> [<c2>]   text colour of the line (c2: its lower row\n"
+    "                                  when split); auto = the usual colours\n"
+    "screen <s> <line> small on|off [on|off]   tiny 3x5 font (32 characters) for\n"
+    "                                  text / time / ticker / msg; split line 2 with\n"
+    "                                  msg/msg + small on on = two small messages\n"
     "screen <s> msgs all|none|<ids>     messages on this screen: screen clock msgs none\n"
     "screen <s> colour big|text|hourglass <c>   big digits / text line / hourglass sand:\n"
     "                                  auto (default), white red green blue yellow cyan magenta\n"

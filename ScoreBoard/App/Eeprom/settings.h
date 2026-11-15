@@ -16,6 +16,7 @@
 
 void Settings_Load(void);                 /* at boot, after the EEPROM is ready */
 void Settings_BrightnessChanged(void);    /* call after a change; saved 2 s later */
+void Settings_RefreshChanged(void);       /* matrix refresh rate changed; saved 2 s later */
 int  Settings_GetMode(void);              /* saved mode index, -1 = none */
 void Settings_SetMode(uint8_t mode);      /* saved 2 s later */
 int  Settings_GetRtcTrim(void);           /* 1 = on */

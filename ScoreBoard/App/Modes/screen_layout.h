@@ -10,6 +10,14 @@
  *   ticker  text, with messages taking turns
  *   msg     messages; full height: two-line messages use both rows,
  *           in a split line: one row (both lines joined)
+ *   now     date and time in the tiny 3x5 font, right aligned (SAT 15 NOV 14:32:05)
+ *   timer   countdown (count-up on the count-up screen) with seconds, tiny
+ *           font, right aligned (49D 05:12:33)
+ *   info    both in one row: date and time on the left, the timer on the right
+ *   bigtext the text item (date / label) in the big-digit font, 16 px (full
+ *           height only); longer than ~9 characters it scrolls
+ *   date    tiny date, right aligned (SUN 15 NOV 2026)
+ *   clock   tiny time of day with seconds, right aligned (14:32:05)
  *   off     nothing
  * Each line also has a background colour (black = none). Each screen has
  * its own set of messages: all, none or some ids ("screen clock msgs none").
@@ -30,7 +38,9 @@
 #define SCREEN_BANDS 4
 #define BAND_NONE    0xFFu          /* bottom of a line that is not split */
 
-typedef enum { BAND_OFF, BAND_BIG, BAND_TEXT, BAND_TICKER, BAND_MSG, BAND_TIME, BAND_KIND_COUNT } BandKind;
+typedef enum { BAND_OFF, BAND_BIG, BAND_TEXT, BAND_TICKER, BAND_MSG, BAND_TIME,
+               BAND_NOW, BAND_TIMER, BAND_INFO, BAND_DATE, BAND_CLOCK,
+               BAND_BIGTEXT, BAND_KIND_COUNT } BandKind;   /* new ones at the end: stored */
 typedef enum { SCREEN_CLOCK, SCREEN_COUNTDOWN, SCREEN_COUNTUP, SCREEN_END, SCREEN_COUNT } ScreenId;
 
 typedef struct {
@@ -56,7 +66,19 @@ typedef struct {
   uint8_t sand;                     /* hourglass sand (auto = amber) */
 } ScreenColors;
 
+/* Per row of a line (row 0 = the whole line or its top half, row 1 = the
+ * bottom half of a split line): text colour (SCREEN_COLOR_AUTO = the screen's
+ * colours / a message's own colour; a colour overrides everything on the row)
+ * and the tiny 3x5 font for text, time, ticker and msg items. */
+typedef struct {
+  uint8_t color;                    /* MatrixColor or SCREEN_COLOR_AUTO */
+  uint8_t small;                    /* 1 = tiny font */
+} RowStyle;
+
 void Screen_Load(void);                                 /* at boot */
+const RowStyle *Screen_RowStyle(ScreenId s, int band, int row);
+int  Screen_SetRowColor(ScreenId s, int band, int row, uint8_t color);   /* saved; 0 = ok */
+int  Screen_SetRowSmall(ScreenId s, int band, int row, uint8_t on);      /* saved; 0 = ok */
 const ScreenLayout *Screen_Layout(ScreenId s);
 int  Screen_SetBand(ScreenId s, int band, uint8_t top, uint8_t bottom);   /* band 0..3; saved; 0 = ok */
 int  Screen_SetBackground(ScreenId s, int band, uint8_t color);           /* saved; 0 = ok */

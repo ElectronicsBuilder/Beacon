@@ -4,7 +4,8 @@
 #include "end_plan.h"
 #include <string.h>
 
-static const char *const scene_names[SCENE_COUNT] = { "none", "fireworks", "stars", "confetti", "snow", "rainbow" };
+static const char *const scene_names[SCENE_COUNT] = { "none", "fireworks", "stars", "confetti", "snow", "rainbow",
+  "coderain", "plasma", "fire", "warp", "hearts", "balloons" };
 static const char *const then_names[END_THEN_COUNT] = { "hold", "screen" };
 
 EndPhase EndPlan_Phase(const EndPlan *p, uint32_t secs_since_zero)

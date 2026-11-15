@@ -10,6 +10,9 @@
 #include "ui_text_edit.h"
 #include "ui_menu.h"
 #include "display_test.h"
+#include "scenes.h"
+#include "countdown.h"
+#include "keys.h"
 #include <string.h>
 
 /* Append new games/screens at the end (the saved mode is the index). */
@@ -75,6 +78,40 @@ int Mode_Select(int index)
   return 0;
 }
 
+static int preview_scene;          /* SceneId being previewed, 0 = none */
+static uint32_t preview_ms;        /* time left, 0 = until stopped */
+
+static void P_PreviewStart(int scene)
+{
+  const TimerConfig *t = Timer_Config();
+  calculateClearImage();
+  Scene_Start((SceneId)scene, t->cd_end[0] ? t->cd_end : t->cd_label);
+  preview_scene = scene;
+}
+
+int Mode_PreviewScene(int scene, uint32_t seconds)
+{
+  if (scene <= SCENE_NONE || scene >= SCENE_COUNT) return -1;
+  if (DisplayTest_Active()) DisplayTest_Stop();
+  if (Menu_Active()) return -1;
+  if (preview_scene == 0 && current >= 0) modes[current]->exit();
+  P_PreviewStart(scene);
+  preview_ms = seconds * 1000u;
+  LOG_I("Scene preview: %s", EndPlan_SceneName((SceneId)scene));
+  return 0;
+}
+
+void Mode_StopPreview(void)
+{
+  if (preview_scene == 0) return;
+  preview_scene = 0;
+  calculateClearImage();
+  CHANGE_FONT(BLUE);
+  if (current >= 0) modes[current]->enter();
+}
+
+int Mode_PreviewingScene(void) { return preview_scene; }
+
 void Mode_StartTest(void)
 {
   if (DisplayTest_Active()) return;
@@ -84,6 +121,12 @@ void Mode_StartTest(void)
 
 void Mode_Tick(void)
 {
+  if (preview_scene != 0)
+  {
+    Scene_Tick();
+    if (preview_ms != 0u && --preview_ms == 0u) Mode_StopPreview();
+    return;
+  }
   if (DisplayTest_Active())
   {
     if (DisplayTest_Tick() && current >= 0)     /* finished: the mode draws its screen again */
@@ -109,6 +152,20 @@ void Mode_Key(uint8_t key)
 {
   if (key == 0)
   {
+    return;
+  }
+  if (preview_scene != 0)                        /* scene preview: Left/Right other scene */
+  {
+    if (key == KB_LEFT || key == KB_RIGHT)
+    {
+      int s = preview_scene;
+      do s = (s + (key == KB_RIGHT ? 1 : SCENE_COUNT - 1)) % SCENE_COUNT; while (s == SCENE_NONE);
+      P_PreviewStart(s);
+    }
+    else
+    {
+      Mode_StopPreview();
+    }
     return;
   }
   if (DisplayTest_Active())                      /* any key stops the display test */

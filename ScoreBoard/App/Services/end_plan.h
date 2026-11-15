@@ -14,7 +14,8 @@
 #include <stdint.h>
 
 typedef enum { SCENE_NONE, SCENE_FIREWORKS, SCENE_STARS, SCENE_CONFETTI, SCENE_SNOW, SCENE_RAINBOW,
-               SCENE_COUNT } SceneId;
+               SCENE_CODERAIN, SCENE_PLASMA, SCENE_FIRE, SCENE_WARP, SCENE_HEARTS, SCENE_BALLOONS,
+               SCENE_COUNT } SceneId;   /* new ones at the end: the number is stored */
 typedef enum { END_THEN_HOLD, END_THEN_SCREEN, END_THEN_COUNT } EndThen;
 typedef enum { END_PHASE_SCENE, END_PHASE_THEN } EndPhase;
 

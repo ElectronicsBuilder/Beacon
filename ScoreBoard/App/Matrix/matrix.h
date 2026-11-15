@@ -98,6 +98,20 @@
  void Matrix_Refresh(void);                 /* rebuild the DMA data if the image changed */
  extern volatile uint8_t matrix_dirty;
  uint8_t Matrix_GetBrightness(void);
+
+ /* BCM time unit in word times (refresh rate vs maximum light, see matrix.c).
+  * 64 rows, 6 planes: 15 = ~410 Hz / 74 %, 23 = ~293 Hz / 81 %,
+  * 31 = ~241 Hz / 90 %. 0 = the original 2016 timing (~111 Hz, ~99 %). */
+ #ifndef MATRIX_BCM_UNIT_DEFAULT
+ #define MATRIX_BCM_UNIT_DEFAULT    23
+ #endif
+ #define MATRIX_BCM_UNIT_MIN        2
+ #define MATRIX_BCM_UNIT_MAX        420   /* ~20 Hz; PSC must stay < 256 */
+ void Matrix_SetBcmUnit(uint16_t unit);
+ uint16_t Matrix_GetBcmUnit(void);
+ uint32_t Matrix_SetRefreshHz(uint32_t hz);  /* closest unit; returns the rate */
+ uint32_t Matrix_RefreshHz(void);           /* full frames per second */
+ uint32_t Matrix_MaxLightPercent(void);     /* lit share of the time at 100 % */
  void calcPrescaler(void);
  void APP_DMA2_Stream1_IRQ(void);
  void initLEDdata(void);

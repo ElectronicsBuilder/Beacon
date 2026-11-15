@@ -28,26 +28,38 @@ struct color image[HEIGHT][WIDTH];//width height with each rgb
 #ifdef ENABLE_MATRIX
 
 /*
- * Gamma and brightness.
- * Each colour channel is shown with BRIGHTNESS (7) bit planes (binary code
- * modulation), so a corrected value is 0..127. The table only applies gamma 2.0;
- * it keeps the full 7-bit range so grey levels are preserved at any brightness.
+ * Gamma, brightness and refresh rate (binary code modulation, BCM).
+ * Each colour channel is shown with BRIGHTNESS bit planes; plane k must be lit
+ * for 2^k time units. Plane k is displayed while plane k+1 is shifted in (a
+ * "window" of WIDTH words). TIM8->PSC (loaded per word by DMA2 Stream2)
+ * stretches a window, and OE (active low) is on only for its first words.
  *
- * Global brightness is done with the OE (output enable) line instead: plane k is
- * displayed while plane k+1 is shifted in, so switching OE off for the tail of
- * every 128-word shift window shortens all planes by the same fraction. The
- * refresh rate (~117 Hz) stays the same, which avoids low-brightness flicker.
+ * Old scheme (2016): the windows lasted 1,2,3,5,9,17,(33) word times with OE
+ * on for the whole window. The weights were not binary, and a 64-row frame
+ * took 37 shift times per row: ~111 Hz, which flickers.
+ * Now: plane k is lit for exactly unit * 2^k word times (unit =
+ * matrix_bcm_unit), a window is only as long as that needs (at least one
+ * shift), and short planes are cut with OE. A small unit gives a higher
+ * refresh rate but less maximum light ("refresh" console command).
+ *
+ * Global brightness scales every plane's OE time by the same factor, so the
+ * refresh rate does not depend on the brightness.
  */
 static uint8_t matrix_brightness = MATRIX_BRIGHTNESS_DEFAULT;   /* percent */
-static uint32_t matrix_oe_on_words = (WIDTH * MATRIX_BRIGHTNESS_DEFAULT) / 100u;
+static uint16_t matrix_bcm_unit = MATRIX_BCM_UNIT_DEFAULT;       /* word times */
+static uint8_t plane_psc[BRIGHTNESS];          /* TIM8->PSC while plane k is displayed */
+static uint8_t plane_oe_words[BRIGHTNESS];     /* words with OE on while plane k is displayed */
 volatile uint8_t matrix_dirty = 1;          /* image changed since the last calculateLEDdata() */
 
 /* Rebuild statistics, readable over the debugger (ST-Link hot-plug). */
 volatile uint32_t matrix_calc_cycles;       /* CPU cycles of the last rebuild */
 volatile uint32_t matrix_calc_count;        /* number of rebuilds since boot */
 
+/* OE can be on for at most WIDTH-1 words of a window: the last one latches. */
+#define OE_MAX_WORDS (WIDTH - 1u)
+
 void calcColorCorrection(void){
-        const uint32_t max_level = (1u << BRIGHTNESS) - 1u;      /* 127 */
+        const uint32_t max_level = (1u << BRIGHTNESS) - 1u;      /* 63 or 127 */
         for(uint32_t v=0; v<256; v++){
                 uint32_t c = (v * v * max_level + (255u * 255u) / 2u) / (255u * 255u);  /* gamma 2.0 */
                 if (v != 0u && c == 0u) {
@@ -57,13 +69,117 @@ void calcColorCorrection(void){
         }
 }
 
+/*
+ * Window length (PSC + 1) and OE words of plane k at a brightness in percent.
+ * Unit 0 = the original 2016 timing: windows of 1,2,3,5,9,17,33 word times,
+ * OE on for the same share of every window.
+ */
+static void P_PlaneTiming(uint32_t unit, uint32_t k, uint32_t percent, uint32_t *div, uint32_t *on){
+        if (unit == 0u) {
+                *div = (k == 0u) ? 1u : (1u << (k - 1u)) + 1u;
+                *on = (WIDTH * percent + 50u) / 100u;
+        } else {
+                uint32_t target = unit << k;                          /* word times at 100 % */
+                *div = (target + OE_MAX_WORDS - 1u) / OE_MAX_WORDS;
+                if (*div == 0u) *div = 1u;
+                *on = (target * percent + 50u * *div) / (100u * *div);
+        }
+        if (*on == 0u) *on = 1u;
+        if (*on > OE_MAX_WORDS) *on = OE_MAX_WORDS;
+}
+
+/* Window length (PSC) and OE time of every plane from the unit and brightness. */
+static void P_ComputeTiming(void){
+        for (uint32_t k = 0; k < BRIGHTNESS; k++) {
+                uint32_t div, on;
+                P_PlaneTiming(matrix_bcm_unit, k, matrix_brightness, &div, &on);
+                plane_psc[k] = (uint8_t)(div - 1u);
+                plane_oe_words[k] = (uint8_t)on;
+        }
+}
+
+/*
+ * prescaler[]: one entry per word of a scan row. Window w (the words of plane w)
+ * displays plane w-1 (window 0: the previous row's last plane). The PSC values
+ * act MATRIX_PSC_OFFSET words late (DMA/timer pipeline), so each window's value
+ * starts that many entries later, wrapping around (same layout as the 2016 code).
+ */
+void calcPrescaler(void){
+        for (uint32_t w = 0; w < BRIGHTNESS; w++) {
+                uint16_t psc = plane_psc[(w + BRIGHTNESS - 1u) % BRIGHTNESS];
+                for (uint32_t col = 0; col < WIDTH; col++) {
+                        prescaler[(w * WIDTH + col + MATRIX_PSC_OFFSET) % PRESCALER_SIZE] = psc;
+                }
+        }
+        prescaler_size = PRESCALER_SIZE;
+}
+
 void Matrix_SetBrightness(uint8_t percent){
         if (percent > 100u) percent = 100u;
         if (percent < MATRIX_BRIGHTNESS_MIN) percent = MATRIX_BRIGHTNESS_MIN;
         matrix_brightness = percent;
-        matrix_oe_on_words = (WIDTH * (uint32_t)percent + 50u) / 100u;
-        if (matrix_oe_on_words == 0u) matrix_oe_on_words = 1u;
+        P_ComputeTiming();
         matrix_dirty = 1;
+}
+
+void Matrix_SetBcmUnit(uint16_t unit){
+        if (unit != 0u && unit < MATRIX_BCM_UNIT_MIN) unit = MATRIX_BCM_UNIT_MIN;
+        if (unit > MATRIX_BCM_UNIT_MAX) unit = MATRIX_BCM_UNIT_MAX;
+        matrix_bcm_unit = unit;
+        P_ComputeTiming();
+        calcPrescaler();               /* the circular DMA picks it up on the fly */
+        matrix_dirty = 1;
+}
+
+uint16_t Matrix_GetBcmUnit(void){
+        return matrix_bcm_unit;
+}
+
+/* TIM8 input clock: APB2 clock, doubled when APB2 is divided. */
+static uint32_t P_Tim8Clock(void){
+        uint32_t pclk2 = HAL_RCC_GetPCLK2Freq();
+        return ((RCC->CFGR & RCC_CFGR_PPRE2) == RCC_CFGR_PPRE2_DIV1) ? pclk2 : 2u * pclk2;
+}
+
+/* Full frames per second (all scan rows) for a unit. */
+static uint32_t P_HzForUnit(uint32_t unit){
+        uint32_t words = 0;                                /* word times per scan row */
+        for (uint32_t k = 0; k < BRIGHTNESS; k++) {
+                uint32_t div, on;
+                P_PlaneTiming(unit, k, 100u, &div, &on);
+                words += WIDTH * div;
+        }
+        uint32_t ticks = words * (TIM8->ARR + 1u) * MATRIX_SCAN_ROWS;
+        return ticks ? (P_Tim8Clock() + ticks / 2u) / ticks : 0u;
+}
+
+uint32_t Matrix_RefreshHz(void){
+        return P_HzForUnit(matrix_bcm_unit);
+}
+
+/* Pick the unit whose refresh rate is closest to hz (0 = original is not
+ * considered: use Matrix_SetBcmUnit(0)). Returns the rate reached. */
+uint32_t Matrix_SetRefreshHz(uint32_t hz){
+        uint32_t best = MATRIX_BCM_UNIT_MIN, best_err = 0xFFFFFFFFu;
+        for (uint32_t u = MATRIX_BCM_UNIT_MIN; u <= MATRIX_BCM_UNIT_MAX; u++) {
+                uint32_t f = P_HzForUnit(u);
+                uint32_t err = (f > hz) ? f - hz : hz - f;
+                if (err < best_err) { best_err = err; best = u; }
+        }
+        Matrix_SetBcmUnit((uint16_t)best);
+        return Matrix_RefreshHz();
+}
+
+/* Share of the time a row is lit at 100 % brightness (maximum light), percent. */
+uint32_t Matrix_MaxLightPercent(void){
+        uint32_t words = 0, lit = 0;
+        for (uint32_t k = 0; k < BRIGHTNESS; k++) {
+                uint32_t div, on;
+                P_PlaneTiming(matrix_bcm_unit, k, 100u, &div, &on);
+                words += WIDTH * div;
+                lit += on * div;
+        }
+        return words ? (100u * lit + words / 2u) / words : 0u;
 }
 
 /* Rebuild the DMA buffer only if something was drawn since the last rebuild. */
@@ -76,31 +192,6 @@ void Matrix_Refresh(void){
 
 uint8_t Matrix_GetBrightness(void){
         return matrix_brightness;
-}
-
-void calcPrescaler(void){
-        #if BRIGHTNESS>1
-        uint32_t prescaler_width,prescaler_brightness;
-        uint32_t prescaler_data[BRIGHTNESS];
-        prescaler_data[0]=0;
-        for(prescaler_width=0;prescaler_width<BRIGHTNESS-1;prescaler_width++){
-                prescaler_data[prescaler_width+1]=1<<prescaler_width;
-        }
-        for(prescaler_width=0;prescaler_width<MATRIX_PSC_OFFSET;prescaler_width++){
-                prescaler[prescaler_size++]=prescaler_data[BRIGHTNESS-2];
-        }
-        for(prescaler_width=0;prescaler_width<WIDTH;prescaler_width++){
-                prescaler[prescaler_size++]=prescaler_data[BRIGHTNESS-1];
-        }
-        for(prescaler_brightness=0;prescaler_brightness<BRIGHTNESS-2;prescaler_brightness++){
-                for(prescaler_width=0;prescaler_width<WIDTH;prescaler_width++){
-                        prescaler[prescaler_size++]=prescaler_data[prescaler_brightness];
-                }
-        }
-        for(prescaler_width=0;prescaler_width<WIDTH-MATRIX_PSC_OFFSET;prescaler_width++){
-                prescaler[prescaler_size++]=prescaler_data[BRIGHTNESS-2];
-        }
-        #endif
 }
 
 /*
@@ -149,6 +240,7 @@ void initLEDdata(void){
         calcColorCorrection();
 
         //pre calculate the prescaler values
+        P_ComputeTiming();
         calcPrescaler();
 
         /* Stream1: led_data[] -> GPIOC->ODR */
@@ -196,7 +288,9 @@ void calculateLEDdata(void){
         /* gamma-corrected channel values of one row pair, computed once per row */
         static uint8_t top_r[WIDTH], top_g[WIDTH], top_b[WIDTH];
         static uint8_t bot_r[WIDTH], bot_g[WIDTH], bot_b[WIDTH];
-        const uint32_t oe_on = matrix_oe_on_words;
+        /* OE time of each window: window w displays plane w-1 */
+        uint8_t oe_on[BRIGHTNESS];
+        for (uint32_t w = 0; w < BRIGHTNESS; w++) oe_on[w] = plane_oe_words[(w + BRIGHTNESS - 1u) % BRIGHTNESS];
         const uint32_t start = DWT->CYCCNT;
         uint32_t n = 0;
 
@@ -220,7 +314,7 @@ void calculateLEDdata(void){
                                                 (((bot_g[col] >> plane) & 1u) << 3);
                                 if (col < WIDTH - 1u) {
                                         /* shift word: OE on (0) for the first oe_on words, off (0x800) after */
-                                        led_data[n++] = (uint16_t)(addr | bits | ((col >= oe_on) ? 0x800u : 0u));
+                                        led_data[n++] = (uint16_t)(addr | bits | ((col >= oe_on[plane]) ? 0x800u : 0u));
                                 } else {
                                         /* last column: OE off + latch, switch to this row's address */
                                         addr = P_RowAddress(row);

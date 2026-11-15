@@ -274,7 +274,7 @@ void Cli_PortConnected(CliPort port)
   p->esc_state = 0;
   if (!p->machine)
   {
-    P_WriteTo(p, "\r\nScoreBoard console. Type 'help' for commands.\r\n");
+    P_WriteTo(p, "\r\nBeacon console. Type 'help' for commands.\r\n");
     P_PromptOf(p);
   }
 }

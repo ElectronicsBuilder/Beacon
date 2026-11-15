@@ -1,5 +1,6 @@
 /*
- * settings.c - user settings kept in the EEPROM (brightness, display mode).
+ * settings.c - user settings kept in the EEPROM (brightness, display mode,
+ * matrix refresh rate, ...).
  *
  * Changes are saved 2 s after the last one, so holding a key does not wear the
  * EEPROM, and only bytes that differ are written. A marker byte tells a blank
@@ -16,6 +17,7 @@
 #define SETTINGS_ADDR_RTC_TRIM    0x0F03u
 #define SETTINGS_ADDR_CD_DAYS     0x0F04u
 #define SETTINGS_ADDR_CU_DAYS     0x0F05u
+#define SETTINGS_ADDR_REFRESH     0x0F06u   /* 2 bytes, BCM unit; 0xFFFF = default */
 #define SETTINGS_MARKER           0xB7u
 #define SETTINGS_SAVE_DELAY_MS    2000u
 
@@ -38,6 +40,16 @@ void Settings_Load(void)
   {
     Matrix_SetBrightness((uint8_t)value);
   }
+  int16_t lo = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_REFRESH);
+  int16_t hi = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_REFRESH + 1u);
+  if (lo >= 0 && hi >= 0)
+  {
+    uint16_t unit = (uint16_t)(((uint16_t)hi << 8) | (uint16_t)lo);
+    if (unit == 0u || (unit >= MATRIX_BCM_UNIT_MIN && unit <= MATRIX_BCM_UNIT_MAX))
+    {
+      Matrix_SetBcmUnit(unit);
+    }
+  }
   int16_t trim = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_RTC_TRIM);
   if (trim >= 0) trim_value = (uint8_t)trim;
   int16_t days = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_CD_DAYS);
@@ -59,6 +71,11 @@ static void P_Changed(void)
 }
 
 void Settings_BrightnessChanged(void)
+{
+  P_Changed();
+}
+
+void Settings_RefreshChanged(void)
 {
   P_Changed();
 }
@@ -111,6 +128,8 @@ void Settings_Poll(void)
     save_pending = 0;
     P_Write(SETTINGS_ADDR_BRIGHTNESS, Matrix_GetBrightness());
     P_Write(SETTINGS_ADDR_MODE, mode_value);
+    P_Write(SETTINGS_ADDR_REFRESH, (uint8_t)Matrix_GetBcmUnit());
+    P_Write(SETTINGS_ADDR_REFRESH + 1u, (uint8_t)(Matrix_GetBcmUnit() >> 8));
     P_Write(SETTINGS_ADDR_RTC_TRIM, trim_value);
     P_Write(SETTINGS_ADDR_CD_DAYS, days_value[0]);
     P_Write(SETTINGS_ADDR_CU_DAYS, days_value[1]);

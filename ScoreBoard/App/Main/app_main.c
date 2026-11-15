@@ -74,7 +74,7 @@ void App_Init(void)
   UsbKbd_Init();
   USART_INIT(USART3, 0, 0, 0, 0, 115200, USART3_IRQn);   // debug console, RX interrupt on
   USART_INIT(USART2, 0, 0, 0, 0, 19200, USART2_IRQn);    // radio, RX interrupt on
-  LOG_I("ScoreBoard firmware %s starting", FW_VERSION);
+  LOG_I("Beacon firmware %s starting", FW_VERSION);
 
   I2C_SelfTest();               // EEPROM wiring test (off unless APP_I2C_SELFTEST), before TFT_INIT
 

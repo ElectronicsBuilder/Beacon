@@ -21,14 +21,18 @@ static ScreenColors colors[SCREEN_COUNT] = {
   { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO }, { SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO, SCREEN_COLOR_AUTO },
 };
 
+static RowStyle styles[SCREEN_COUNT][SCREEN_BANDS][2];   /* set to auto / normal in Screen_Load */
+
 static const char *const screen_names[SCREEN_COUNT] = { "clock", "countdown", "countup", "end" };
-static const char *const kind_names[BAND_KIND_COUNT] = { "off", "big", "text", "ticker", "msg", "time" };
+static const char *const kind_names[BAND_KIND_COUNT] = { "off", "big", "text", "ticker", "msg", "time",
+                                                              "now", "timer", "info", "date", "clock", "bigtext" };
 
 static int P_Valid(const BandCfg *b)
 {
   if (b->top >= BAND_KIND_COUNT || b->bg >= MTX_C_COUNT) return 0;
   if (b->bottom == BAND_NONE) return 1;
-  return b->bottom < BAND_KIND_COUNT && b->top != BAND_BIG && b->bottom != BAND_BIG;
+  return b->bottom < BAND_KIND_COUNT && b->top != BAND_BIG && b->bottom != BAND_BIG &&
+         b->top != BAND_BIGTEXT && b->bottom != BAND_BIGTEXT;     /* 16 px: full line only */
 }
 
 static void P_Save(void)
@@ -45,8 +49,57 @@ static int P_ColorOk(uint8_t c)
   return c == SCREEN_COLOR_AUTO || (c < MTX_C_COUNT && c != MTX_C_BLACK);
 }
 
+static int P_ColorOk(uint8_t c);
+
+static void P_StylesLoad(void)
+{
+  for (int s = 0; s < SCREEN_COUNT; s++)
+    for (int b = 0; b < SCREEN_BANDS; b++)
+      for (int r = 0; r < 2; r++) styles[s][b][r] = (RowStyle){ SCREEN_COLOR_AUTO, 0 };
+  static RowStyle saved[SCREEN_COUNT][SCREEN_BANDS][2];
+  if (EeRecord_Load(EE_RECORD_ROWSTYLE_ADDR, saved, sizeof saved) != 0) return;
+  for (int s = 0; s < SCREEN_COUNT; s++)
+    for (int b = 0; b < SCREEN_BANDS; b++)
+      for (int r = 0; r < 2; r++)
+        if (!P_ColorOk(saved[s][b][r].color) || saved[s][b][r].small > 1u) return;   /* not ours */
+  memcpy(styles, saved, sizeof styles);
+}
+
+static void P_StylesSave(void)
+{
+  changes++;
+  if (EeRecord_Save(EE_RECORD_ROWSTYLE_ADDR, styles, sizeof styles) != 0)
+  {
+    LOG_E("Screen row styles: EEPROM write failed");
+  }
+}
+
+const RowStyle *Screen_RowStyle(ScreenId s, int band, int row)
+{
+  if (s >= SCREEN_COUNT) s = SCREEN_CLOCK;
+  if (band < 0 || band >= SCREEN_BANDS) band = 0;
+  return &styles[s][band][row ? 1 : 0];
+}
+
+int Screen_SetRowColor(ScreenId s, int band, int row, uint8_t color)
+{
+  if (s >= SCREEN_COUNT || band < 0 || band >= SCREEN_BANDS || row < 0 || row > 1 || !P_ColorOk(color)) return -1;
+  styles[s][band][row].color = color;
+  P_StylesSave();
+  return 0;
+}
+
+int Screen_SetRowSmall(ScreenId s, int band, int row, uint8_t on)
+{
+  if (s >= SCREEN_COUNT || band < 0 || band >= SCREEN_BANDS || row < 0 || row > 1) return -1;
+  styles[s][band][row].small = on ? 1u : 0u;
+  P_StylesSave();
+  return 0;
+}
+
 void Screen_Load(void)
 {
+  P_StylesLoad();
   ScreenColors sc[SCREEN_COUNT];
   if (EeRecord_Load(EE_RECORD_SCRCOLOR_ADDR, sc, sizeof sc) == 0)
   {

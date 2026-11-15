@@ -9,6 +9,8 @@
 #include "ui_ticker.h"
 #include "msg_store.h"
 #include "clock.h"
+#include "countdown.h"
+#include "font_tiny.h"
 #include "cmsis_os.h"
 #include "layout.h"
 #include "FONT.h"
@@ -29,6 +31,9 @@ typedef struct {
   int8_t   hg_drawn;         /* hourglass seconds shown, -1 = none */
   int32_t  hg_x;             /* where the hourglass goes (after the minutes) */
   char     joined[2 * MSG_LINE_MAX + 4];   /* one-row message: both lines */
+  char     tiny[56];         /* now / timer / info: what is drawn */
+  uint8_t  color;            /* row text colour, SCREEN_COLOR_AUTO = the usual */
+  uint8_t  small;            /* tiny font for text / time / ticker / msg */
 } Slot;
 
 typedef struct {
@@ -58,6 +63,9 @@ static MatrixColor P_Color(int b, MatrixColor c)
 {
   return (LAYOUT_TOP_HALF_WHITE_ONLY && b < 2) ? MTX_C_WHITE : c;
 }
+
+/* the row's own colour when one is set, else c */
+#define ROW_COLOR(s, c) ((s)->color != SCREEN_COLOR_AUTO ? (MatrixColor)(s)->color : (c))
 
 static void P_ClearRows(int32_t y, int rows)
 {
@@ -134,14 +142,38 @@ static void P_Hourglass(int32_t x0, int32_t y0, int top, int band, uint8_t sr, u
 
 /* ------------------------------------------------------------ big digits */
 
-/* Big digits (8x8 font at double size) with tight spacing: a digit or letter
- * uses font columns 1-6 (12 px), the colon column 3 (2 px) with 3 px either
- * side, a space is 6 px, other gaps 2 px. "49D 05:12" + hourglass = 121 px. */
+/* Big digits (8x8 font at double size) with tight spacing: a digit uses font
+ * columns 1-6 (12 px), a letter its real width, the colon column 3 (2 px) with
+ * 3 px either side, a space is 6 px, other gaps 2 px.
+ * "49D 05:12" + hourglass = ~121 px. */
 #define BIG_SCALE 2
 #define BIG_GAP   2
 #define HG_GAP    4
 
-static int32_t P_BigW(char c)   { return c == ':' ? 2 : c == ' ' ? 6 : 12; }
+/* font columns a character uses: digits 1-6 (fixed width: the countdown does
+ * not jiggle), the colon 3, letters and signs their real extent */
+static void P_BigCols(char c, int *first, int *last)
+{
+  *first = 1;
+  *last = 6;
+  if (c == ':') { *first = *last = 3; return; }
+  if ((c >= '0' && c <= '9') || c < 32 || c > 126) return;
+  const uint16_t *rows = &Font8x8.table[(c - 32) * Font8x8.Height];
+  int lo = 8, hi = -1;
+  for (int r = 0; r < 8; r++)
+    for (int col = 0; col < 8; col++)
+      if ((rows[r] >> (7 - col)) & 1u) { if (col < lo) lo = col; if (col > hi) hi = col; }
+  if (hi >= lo) { *first = lo; *last = hi; }
+}
+
+static int32_t P_BigW(char c)
+{
+  if (c == ' ') return 6;
+  int first, last;
+  P_BigCols(c, &first, &last);
+  return (last - first + 1) * BIG_SCALE;
+}
+
 static int32_t P_BigGap(char a, char b) { return (a == ':' || b == ':') ? 3 : BIG_GAP; }
 
 static int32_t P_BigWidth(const char *s, int hourglass)
@@ -163,7 +195,8 @@ static int32_t P_BigDraw(const char *s, int32_t x, int32_t y)
   {
     char c = s[i];
     if (i > 0) x += P_BigGap(s[i - 1], c);
-    int first = (c == ':') ? 3 : 1, last = (c == ':') ? 3 : 6;
+    int first, last;
+    P_BigCols(c, &first, &last);
     if (c != ' ' && c >= 32 && c <= 126)
     {
       const uint16_t *rows = &Font8x8.table[(c - 32) * Font8x8.Height];
@@ -196,17 +229,19 @@ static void P_ShowMsg(int b, Slot *s, int id)
   P_ClearRows(s->y, s->full ? 16 : 8);
   s->msg_id = (m != NULL) ? id : 0;
   s->msg_ms = 0;
-  MatrixColor c = P_Color(b, m ? (MatrixColor)m->color : MTX_C_WHITE);
+  MatrixColor c = ROW_COLOR(s, P_Color(b, m ? (MatrixColor)m->color : MTX_C_WHITE));
   if (m != NULL && s->full && m->line2[0])
   {
     TextLine_Init(&s->a, s->y, c);
     TextLine_Init(&s->b, s->y + 8, c);
+    s->a.small = s->b.small = s->small;
     TextLine_Set(&s->a, m->line1, c);
     TextLine_Set(&s->b, m->line2, c);
     return;
   }
   TextLine_Init(&s->a, s->full ? s->y + 4 : s->y, c);
   TextLine_Init(&s->b, s->y + 8, c);
+  s->a.small = s->b.small = s->small;
   if (m != NULL)
   {
     snprintf(s->joined, sizeof s->joined, m->line2[0] ? "%s  %s" : "%s", m->line1, m->line2);
@@ -242,17 +277,134 @@ static void P_MsgTick(int b, Slot *s)
   }
 }
 
+/* ------------------------------------------------------------ big text */
+
+#define BIGTEXT_SCROLL_MS 25u         /* 1 px per step: 40 px/s */
+
+/* the text item in the big-digit font: centred, or scrolling when too wide */
+static void P_BigTextTick(int b, Slot *s, const char *text)
+{
+  uint8_t tc = Screen_Colors(screen)->text;
+  MatrixColor c = ROW_COLOR(s, (tc == SCREEN_COLOR_AUTO) ? P_Color(b, MTX_C_GREEN) : (MatrixColor)tc);
+  uint32_t now = osKernelGetTickCount();
+  if (Clock_IsStale() && (now / 1000u) % 2u)          /* time behind: blink */
+  {
+    text = "SYNC TIME";
+    c = MTX_C_RED;
+  }
+  int32_t w = P_BigWidth(text, 0);
+  int changed = strcmp(text, s->joined) != 0 || c != (MatrixColor)s->big_color;
+  if (changed)
+  {
+    snprintf(s->joined, sizeof s->joined, "%s", text);
+    s->big_color = (uint8_t)c;
+    s->hg_x = WIDTH;                                  /* scroll start: from the right edge */
+    s->msg_ms = now;
+  }
+  else if (w <= WIDTH || now - s->msg_ms < BIGTEXT_SCROLL_MS)
+  {
+    return;                                           /* nothing moves */
+  }
+  else
+  {
+    s->msg_ms = now;
+    if (--s->hg_x < -w) s->hg_x = WIDTH;
+  }
+  P_ClearRows(s->y, 16);
+  Matrix_SetTextColor(c);
+  P_BigDraw(text, w <= WIDTH ? (WIDTH - w) / 2 : s->hg_x, s->y);
+}
+
+/* ------------------------------------------------------------ tiny date / timer */
+
+/* seconds: 0 = date + HH:MM, 1 = date + HH:MM:SS, 2 = date only, 3 = time only */
+static void P_NowText(char *buf, size_t len, int seconds)
+{
+  static const char *const wd[8] = { "", "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN" };
+  static const char *const mon[13] = { "", "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                                       "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+  if (!Clock_IsSet())
+  {
+    snprintf(buf, len, "NO TIME");
+    return;
+  }
+  ClockTime t;
+  Clock_Get(&t);
+  const char *w = (t.weekday >= 1u && t.weekday <= 7u) ? wd[t.weekday] : "";
+  const char *m = (t.month >= 1u && t.month <= 12u) ? mon[t.month] : "";
+  if (seconds == 3)
+    snprintf(buf, len, "%02u:%02u:%02u", t.hour, t.minute, t.second);
+  else if (seconds == 2)
+    snprintf(buf, len, "%s %u %s %u", w, t.day, m, t.year);
+  else if (seconds)
+    snprintf(buf, len, "%s %u %s %02u:%02u:%02u", w, t.day, m, t.hour, t.minute, t.second);
+  else
+    snprintf(buf, len, "%s %u %s %02u:%02u", w, t.day, m, t.hour, t.minute);
+}
+
+/* count-up screen: elapsed; others: remaining (or elapsed if no countdown) */
+static void P_TimerText(char *buf, size_t len)
+{
+  uint32_t secs = 0;
+  int rc = (screen == SCREEN_COUNTUP) ? Timer_Elapsed(&secs) : Timer_Remaining(&secs);
+  if (rc != 0 && screen != SCREEN_COUNTUP) rc = Timer_Elapsed(&secs);
+  if (rc != 0)
+  {
+    snprintf(buf, len, "--:--:--");
+    return;
+  }
+  unsigned long d = secs / 86400u, h = secs / 3600u % 24u, mi = secs / 60u % 60u, se = secs % 60u;
+  if (d > 0u) snprintf(buf, len, "%luD %02lu:%02lu:%02lu", d, h, mi, se);
+  else        snprintf(buf, len, "%02lu:%02lu:%02lu", h, mi, se);
+}
+
+static void P_TinyTick(int b, Slot *s, uint8_t big_color)
+{
+  uint32_t now = osKernelGetTickCount();
+  if (s->msg_ms != 0u && now - s->msg_ms < 200u) return;      /* 5 updates per second */
+  s->msg_ms = now | 1u;
+  char left[24] = "", right[24] = "", key[sizeof left + sizeof right + 8];
+  if (s->kind == BAND_NOW)        P_NowText(right, sizeof right, 1);
+  else if (s->kind == BAND_TIMER) P_TimerText(right, sizeof right);
+  else if (s->kind == BAND_DATE)  P_NowText(right, sizeof right, 2);
+  else if (s->kind == BAND_CLOCK) P_NowText(right, sizeof right, 3);
+  else { P_NowText(left, sizeof left, 0); P_TimerText(right, sizeof right); }
+  int stale = Clock_IsStale() && (now / 1000u) % 2u;          /* time behind: blink */
+  if (stale && s->kind != BAND_TIMER)
+  {
+    snprintf(s->kind == BAND_INFO ? left : right, sizeof left, "SYNC TIME");
+  }
+  snprintf(key, sizeof key, "%s|%s|%d", left, right, stale);
+  if (strcmp(key, s->tiny) == 0) return;
+  snprintf(s->tiny, sizeof s->tiny, "%s", key);
+  P_ClearRows(s->y, s->full ? 16 : 8);
+  int32_t y = s->y + (s->full ? 5 : 2);
+  uint8_t tc = Screen_Colors(screen)->text, bc = Screen_Colors(screen)->big;
+  MatrixColor date_c = stale ? MTX_C_RED : ROW_COLOR(s, (tc == SCREEN_COLOR_AUTO ? P_Color(b, MTX_C_GREEN) : (MatrixColor)tc));
+  MatrixColor timer_c = big_color == RED ? MTX_C_RED : ROW_COLOR(s, (bc == SCREEN_COLOR_AUTO ? P_Color(b, MTX_C_WHITE) : (MatrixColor)bc));
+  if (left[0])
+  {
+    Matrix_SetTextColor(date_c);
+    TinyFont_Draw(left, 1, y);
+  }
+  Matrix_SetTextColor(s->kind == BAND_TIMER || s->kind == BAND_INFO ? timer_c : date_c);
+  TinyFont_Draw(right, WIDTH - 1 - TinyFont_Width(right), y);
+}
+
 /* ------------------------------------------------------------ screen */
 
-static void P_InitSlot(int b, Slot *s, uint8_t kind, int32_t y, int full)
+static void P_InitSlot(int b, Slot *s, uint8_t kind, int32_t y, int full, const RowStyle *st)
 {
   memset(s, 0, sizeof *s);
   s->kind = kind;
   s->full = (uint8_t)full;
   s->y = y;
+  s->color = st->color;
+  s->small = st->small;
   int32_t text_y = (full && kind != BAND_BIG) ? y + 4 : y;   /* text centred in a full line */
   TextLine_Init(&s->a, text_y, MTX_C_WHITE);
   TextLine_Init(&s->b, y + 8, MTX_C_WHITE);
+  s->a.small = s->b.small = s->small;
   Ticker_Reset(&s->ticker);
   s->msg_changes = MsgStore_Changes();
   if (kind == BAND_MSG) P_ShowMsg(b, s, MsgStore_Next());
@@ -277,13 +429,13 @@ void Bands_Enter(ScreenId sc)
     if (cfg->bottom == BAND_NONE)
     {
       band->count = 1;
-      P_InitSlot(b, &band->slot[0], cfg->top, y, 1);
+      P_InitSlot(b, &band->slot[0], cfg->top, y, 1, Screen_RowStyle(sc, b, 0));
     }
     else
     {
       band->count = 2;
-      P_InitSlot(b, &band->slot[0], cfg->top, y, 0);
-      P_InitSlot(b, &band->slot[1], cfg->bottom, y + 8, 0);
+      P_InitSlot(b, &band->slot[0], cfg->top, y, 0, Screen_RowStyle(sc, b, 0));
+      P_InitSlot(b, &band->slot[1], cfg->bottom, y + 8, 0, Screen_RowStyle(sc, b, 1));
     }
   }
   Matrix_SetBackColor(MTX_C_BLACK);
@@ -306,7 +458,7 @@ static void P_SlotTick(int b, Slot *s, const char *big, uint8_t big_color, const
         P_ClearRows(s->y, 16);                                   /* tight layout: positions move */
         strncpy(s->big, big, sizeof s->big - 1u);
         s->big_color = big_color;
-        uint8_t bc = Screen_Colors(screen)->big;
+        uint8_t bc = s->color != SCREEN_COLOR_AUTO ? s->color : Screen_Colors(screen)->big;
         if (big_color == RED || bc == SCREEN_COLOR_AUTO) CHANGE_FONT(big_color);
         else Matrix_SetTextColor((MatrixColor)bc);
         s->hg_x = P_BigDraw(big, x0, s->y) + HG_GAP;
@@ -329,8 +481,9 @@ static void P_SlotTick(int b, Slot *s, const char *big, uint8_t big_color, const
     case BAND_TIME:
     {
       uint8_t bc = Screen_Colors(screen)->big;
-      MatrixColor c = big_color == RED ? MTX_C_RED : (bc == SCREEN_COLOR_AUTO ? P_Color(b, MTX_C_WHITE) : (MatrixColor)bc);
+      MatrixColor c = big_color == RED ? MTX_C_RED : ROW_COLOR(s, (bc == SCREEN_COLOR_AUTO ? P_Color(b, MTX_C_WHITE) : (MatrixColor)bc));
       TextLine_Set(&s->a, big, c);
+      TextLine_Tick(&s->a);
       break;
     }
     case BAND_TEXT:
@@ -344,18 +497,28 @@ static void P_SlotTick(int b, Slot *s, const char *big, uint8_t big_color, const
         shown = Ticker_Tick(&s->ticker, &s->a, text, &c);   /* a message: its own colour */
       }
       int own = (shown == text);
+      MatrixColor shown_c = ROW_COLOR(s, (own && tc != SCREEN_COLOR_AUTO) ? c : P_Color(b, c));
       if (Clock_IsStale() && (osKernelGetTickCount() / 1000u) % 2u)   /* time behind: blink */
       {
         shown = "SYNC TIME";
-        c = MTX_C_RED;
-        own = 0;
+        shown_c = MTX_C_RED;
       }
-      TextLine_Set(&s->a, shown, (own && tc != SCREEN_COLOR_AUTO) ? c : P_Color(b, c));
+      TextLine_Set(&s->a, shown, shown_c);
       TextLine_Tick(&s->a);
       break;
     }
     case BAND_MSG:
       P_MsgTick(b, s);
+      break;
+    case BAND_BIGTEXT:
+      P_BigTextTick(b, s, text);
+      break;
+    case BAND_NOW:
+    case BAND_TIMER:
+    case BAND_INFO:
+    case BAND_DATE:
+    case BAND_CLOCK:
+      P_TinyTick(b, s, big_color);
       break;
     default:
       break;

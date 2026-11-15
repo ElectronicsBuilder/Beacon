@@ -231,9 +231,9 @@ void Ble_Init(void)
   P_Cmd("AT+NOTI1", reply, sizeof reply);    /* "OK+CONN" / "OK+LOST" notifications */
   P_Cmd("AT+PWRM1", reply, sizeof reply);    /* no auto sleep: AT commands always work */
   P_ReadSettings();
-  if (strcmp(name, "HMSoft") == 0 || name[0] == '\0')
+  if (strcmp(name, "HMSoft") == 0 || strcmp(name, "ScoreBoard") == 0 || name[0] == '\0')
   {
-    Ble_SetName("ScoreBoard");
+    Ble_SetName("Beacon");               /* factory or the old name */
   }
   LOG_I("BLE: HM-11 \"%s\" at %lu baud%s%s", name, (unsigned long)baud,
         crlf ? " (CR LF commands)" : "", pin[0] ? ", PIN set" : "");

@@ -49,7 +49,7 @@ static int P_Ble(int argc, char **argv)
 static const CliCommand ble_commands[] = {
   { "ble", "[status|name|pin]", "Bluetooth (HM-11) console", P_Ble,
     "ble                 state (no module / waiting / connected), name, PIN, baud\n"
-    "ble name ScoreBoard name shown when scanning (1..12 letters, digits, - _)\n"
+    "ble name Beacon     name shown when scanning (1..12 letters, digits, - _)\n"
     "ble pin 123456      require this PIN when pairing;  ble pin off  no PIN\n"
     "Name and PIN can only be changed while nothing is connected over Bluetooth\n"
     "(use the USB serial console). Connected phones/PCs get the same console:\n"

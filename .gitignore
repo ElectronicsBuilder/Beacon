@@ -25,3 +25,7 @@ Thumbs.db
 __pycache__/
 *.pyc
 .venv/
+
+# GUI theme, generated at start-up
+tools/scoreboard/assets/vscode_dark.json
+tools/dist/
