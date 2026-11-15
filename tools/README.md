@@ -1,6 +1,7 @@
-# ScoreBoard PC tools
+# Beacon PC tools
 
-Control panel and terminal for the LED scoreboard, over **Bluetooth LE**
+Control panel and terminal for **Beacon**, the LED display board (clock, countdowns,
+messages, scenes, ping-pong score), over **Bluetooth LE**
 (the board's HM-11 module) or a **USB serial** adapter on the console port.
 
 ## Install (once)
@@ -15,23 +16,32 @@ Python 3.10 or newer. Bluetooth needs a PC with Bluetooth 4.0+ (BLE).
 ## Control panel (GUI)
 
 ```
-python -m scoreboard.gui        # or double-click scoreboard_gui.pyw
+python -m scoreboard.gui        # or double-click beacon.pyw
 ```
 
-1. Choose **Bluetooth** (Scan finds "ScoreBoard") or **USB serial** (COM port).
+1. Choose **Bluetooth** (Scan finds "Beacon", or the old name "ScoreBoard") or **USB serial** (COM port).
 2. **Connect.** The board clock is set to this PC's time (unless unticked).
-3. Tabs:
-   - **Display**: mode, brightness, remote keyboard.
-   - **Game**: players, start, points.
-   - **Countdown** and **Count-up**: times, texts, scene at zero.
+3. Pages (icons on the left, `Ctrl+1`..`8`; `Ctrl+B` hides the side bar):
+   - **Display**: mode, brightness, refresh rate, remote keyboard.
+   - **Screens**: what each display line shows, its colours and font size, with a preview.
+   - **Countdown** and **Count-up**: times, texts, scene at zero
+     (**Try the scene now** plays it on the board without touching the countdown).
    - **Messages**: add or edit messages, with a preview.
-   - **Screens**: what each display line shows, with a preview.
-   - **Settings**: clock trim, Bluetooth name and PIN, restart.
+   - **Game**: players, start, points.
    - **Console**: any command.
+   - **Settings**: clock trim, Bluetooth name and PIN, restart.
 
-The previews use the firmware's own 8x8 font (`scoreboard/font8x8.py`) and its
-layout rules, including this board's wiring: only display lines 1 and 3 light
-up (HUB75 E line not wired), and lines 1-2 have blue stuck on.
+The previews use the firmware's own fonts (`scoreboard/font8x8.py`, the tiny 3x5
+font in `preview.py`) and its layout rules.
+
+## Windows program (Beacon.exe)
+
+```
+build_exe.bat                   # or: powershell -ExecutionPolicy Bypass -File build_exe.ps1
+```
+
+Builds `dist\Beacon.exe` (one file, about 20 MB, no Python needed on the PC that
+runs it). It installs PyInstaller and the requirements first if needed.
 
 ## Terminal
 

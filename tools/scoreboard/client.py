@@ -22,8 +22,9 @@ from .link import Link, LinkError
 
 COLOURS = ["white", "red", "green", "blue", "yellow", "cyan", "magenta"]
 SCREENS = ["clock", "countdown", "countup", "end"]
-BAND_ITEMS = ["off", "big", "time", "text", "ticker", "msg"]
-SCENES = ["none", "fireworks", "stars", "confetti", "snow", "rainbow"]
+BAND_ITEMS = ["off", "big", "time", "text", "ticker", "msg", "now", "timer", "info", "date", "clock", "bigtext"]
+SCENES = ["none", "fireworks", "stars", "confetti", "snow", "rainbow",
+          "coderain", "plasma", "fire", "warp", "hearts", "balloons"]
 MODES = ["pingpong", "clock", "countdown", "countup", "messages"]
 
 
@@ -171,7 +172,8 @@ class ScoreBoard:
         return msgs, settings
 
     def screens(self) -> dict[str, dict]:
-        """screen -> {'lines': [item x4], 'bg': [colour x4], 'msgs': 'all'|...}"""
+        """screen -> {'lines': [item x4], 'bg': [colour x4], 'fg': [[top, bottom] x4],
+        'small': [[bool, bool] x4], 'msgs': 'all'|...}"""
         r = self.run("screen")
         out = {}
         for line in r.lines:
@@ -179,18 +181,25 @@ class ScoreBoard:
             if not m or m.group(1) not in SCREENS:
                 continue
             items, bgs, msgs = ["off"] * 4, ["black"] * 4, "all"
-            for tok in re.finditer(r"(\d)=([\w/]+)\*?(?:\(bg (\w+)\))?", m.group(2)):
+            fgs = [["auto", "auto"] for _ in range(4)]
+            smalls = [[False, False] for _ in range(4)]
+            pat = r"(\d)=([\w/]+)\*?(?:\(bg (\w+)\))?(?:\(fg (\w+)/(\w+)\))?(?:\(small (\d)/(\d)\))?"
+            for tok in re.finditer(pat, m.group(2)):
                 i = int(tok.group(1)) - 1
                 items[i] = tok.group(2)
                 if tok.group(3):
                     bgs[i] = tok.group(3)
+                if tok.group(4):
+                    fgs[i] = [tok.group(4), tok.group(5)]
+                if tok.group(6):
+                    smalls[i] = [tok.group(6) == "1", tok.group(7) == "1"]
             mm = re.search(r"msgs=(\S+)", m.group(2))
             if mm:
                 msgs = mm.group(1)
             cb = re.search(r"big=(\w+)", m.group(2))
             ct = re.search(r"text=(\w+)", m.group(2))
             ch = re.search(r"hourglass=(\w+)", m.group(2))
-            out[m.group(1)] = {"lines": items, "bg": bgs, "msgs": msgs,
+            out[m.group(1)] = {"lines": items, "bg": bgs, "fg": fgs, "small": smalls, "msgs": msgs,
                                "big": cb.group(1) if cb else "auto", "text": ct.group(1) if ct else "auto",
                                "sand": ch.group(1) if ch else "auto"}
         return out

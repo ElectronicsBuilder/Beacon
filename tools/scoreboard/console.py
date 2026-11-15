@@ -1,6 +1,6 @@
 """Interactive terminal for the scoreboard console over Bluetooth LE or USB serial.
 
-    python -m scoreboard.console              # find "ScoreBoard" over BLE
+    python -m scoreboard.console              # find "Beacon" over BLE
     python -m scoreboard.console --port COM5  # USB serial adapter
     python -m scoreboard.console --scan       # list BLE devices and exit
 
@@ -31,7 +31,7 @@ def _printer(link, stop: threading.Event) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--port", help="USB serial port (e.g. COM5); default: Bluetooth")
-    ap.add_argument("--address", help="BLE address (default: first device named ScoreBoard/HMSoft)")
+    ap.add_argument("--address", help="BLE address (default: first device named Beacon/ScoreBoard/HMSoft)")
     ap.add_argument("--scan", action="store_true", help="list BLE devices and serial ports, then exit")
     args = ap.parse_args(argv)
 
@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         address, name = args.address, ""
         if not address:
-            print("Looking for the scoreboard over Bluetooth...")
+            print("Looking for Beacon over Bluetooth...")
             found = ble_scan()
             if not found:
                 print("Not found. Is it powered and not connected to a phone? (--scan lists devices)")

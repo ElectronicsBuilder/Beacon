@@ -1,4 +1,4 @@
-"""Double-click to start the ScoreBoard control panel (no console window)."""
+"""Double-click to start the Beacon control panel (no console window)."""
 import sys
 from pathlib import Path
 

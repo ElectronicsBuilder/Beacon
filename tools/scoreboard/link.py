@@ -129,7 +129,7 @@ class BleDevice:
 
 
 def ble_scan(timeout: float = 5.0) -> list[BleDevice]:
-    """BLE devices that look like an HM-1x (name ScoreBoard/HMSoft or FFE0 service)."""
+    """BLE devices that look like an HM-1x (name Beacon/ScoreBoard/HMSoft or FFE0 service)."""
     from bleak import BleakScanner
 
     async def scan():
@@ -139,7 +139,7 @@ def ble_scan(timeout: float = 5.0) -> list[BleDevice]:
     result = []
     for addr, (dev, adv) in found.items():
         name = adv.local_name or dev.name or ""
-        if "ScoreBoard" in name or "HMSoft" in name or BLE_SERVICE in [u.lower() for u in adv.service_uuids]:
+        if "Beacon" in name or "ScoreBoard" in name or "HMSoft" in name or BLE_SERVICE in [u.lower() for u in adv.service_uuids]:
             result.append(BleDevice(addr, name or addr, adv.rssi))
     return sorted(result, key=lambda d: -d.rssi)
 

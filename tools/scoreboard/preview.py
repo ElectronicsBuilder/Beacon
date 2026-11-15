@@ -58,8 +58,22 @@ def draw_hourglass(m: "Matrix", x0: int, y0: int, top: int, bg: tuple, white_gla
         m.set(x0 + HG_W // 2, y0 + 7 + top % 2, sand)
 
 
+def _big_cols(c: str) -> tuple[int, int]:
+    """Font columns a character uses: digits 1-6, colon 3, letters their real extent."""
+    if c == ":":
+        return 3, 3
+    code = ord(c) - FIRST
+    if c.isdigit() or not 0 <= code < len(FONT):
+        return 1, 6
+    cols = [col for bits in FONT[code] for col in range(8) if bits & (0x80 >> col)]
+    return (min(cols), max(cols)) if cols else (1, 6)
+
+
 def _big_w(c: str) -> int:
-    return 2 if c == ":" else 6 if c == " " else 12
+    if c == " ":
+        return 6
+    first, last = _big_cols(c)
+    return (last - first + 1) * 2
 
 
 def _big_gap(a: str, b: str) -> int:
@@ -76,7 +90,7 @@ def draw_big(m: "Matrix", s: str, x: int, y: int, fg: tuple, bg: tuple) -> int:
     for i, c in enumerate(s):
         if i:
             x += _big_gap(s[i - 1], c)
-        first, last = (3, 3) if c == ":" else (1, 6)
+        first, last = _big_cols(c)
         code = ord(c) - FIRST
         if c != " " and 0 <= code < len(FONT):
             for r, bits in enumerate(FONT[code]):
@@ -89,6 +103,60 @@ def draw_big(m: "Matrix", s: str, x: int, y: int, fg: tuple, bg: tuple) -> int:
     return x
 
 
+# 3 x 5 font of the firmware (App/Matrix/font_tiny.c): rows of 3 bits, MSB left
+TINY = {
+    '0': [7, 5, 5, 5, 7],
+    '1': [2, 6, 2, 2, 7],
+    '2': [7, 1, 7, 4, 7],
+    '3': [7, 1, 7, 1, 7],
+    '4': [5, 5, 7, 1, 1],
+    '5': [7, 4, 7, 1, 7],
+    '6': [7, 4, 7, 5, 7],
+    '7': [7, 1, 1, 2, 2],
+    '8': [7, 5, 7, 5, 7],
+    '9': [7, 5, 7, 1, 7],
+    ':': [0, 2, 0, 2, 0],
+    '-': [0, 0, 7, 0, 0],
+    '+': [0, 2, 7, 2, 0],
+    '/': [1, 1, 2, 4, 4],
+    '.': [0, 0, 0, 0, 2],
+    ',': [0, 0, 0, 2, 4],
+    '!': [2, 2, 2, 0, 2],
+    '?': [7, 1, 3, 0, 2],
+    "'": [2, 2, 0, 0, 0],
+    'A': [2, 5, 7, 5, 5],
+    'B': [6, 5, 6, 5, 6],
+    'C': [3, 4, 4, 4, 3],
+    'D': [6, 5, 5, 5, 6],
+    'E': [7, 4, 6, 4, 7],
+    'F': [7, 4, 6, 4, 4],
+    'G': [3, 4, 5, 5, 3],
+    'H': [5, 5, 7, 5, 5],
+    'I': [7, 2, 2, 2, 7],
+    'J': [1, 1, 1, 5, 2],
+    'K': [5, 5, 6, 5, 5],
+    'L': [4, 4, 4, 4, 7],
+    'M': [5, 7, 7, 5, 5],
+    'N': [6, 5, 5, 5, 5],
+    'O': [2, 5, 5, 5, 2],
+    'P': [6, 5, 6, 4, 4],
+    'Q': [2, 5, 5, 6, 3],
+    'R': [6, 5, 6, 5, 5],
+    'S': [3, 4, 2, 1, 6],
+    'T': [7, 2, 2, 2, 2],
+    'U': [5, 5, 5, 5, 7],
+    'V': [5, 5, 5, 5, 2],
+    'W': [5, 5, 7, 7, 5],
+    'X': [5, 5, 2, 5, 5],
+    'Y': [5, 5, 2, 2, 2],
+    'Z': [7, 1, 2, 4, 7],
+}
+
+
+def tiny_width(s: str) -> int:
+    return len(s) * 4 - 1 if s else 0
+
+
 @dataclass
 class PreviewData:
     big: str = "12:34:56"           # big / time items
@@ -99,6 +167,9 @@ class PreviewData:
     big_colour: str = "auto"
     text_colour: str = "auto"
     sand_colour: str = "auto"
+    now: str = "SUN 15 NOV 14:32:05"  # now / info items (info leaves out the seconds)
+    timer: str = "49D 05:12:33"       # timer / info items
+    year: int = 2026                  # date item
 
 
 class Matrix:
@@ -131,6 +202,14 @@ class Matrix:
                                 self.set(x + c * scale + dx, y + r * scale + dy, fg if on else bg)
             x += advance or 8 * scale
 
+    def tiny(self, s: str, x: int, y: int, fg: tuple, bg: tuple) -> None:
+        for ch in s.upper():
+            rows = TINY.get(ch, [0, 0, 0, 0, 0])
+            for r, bits in enumerate(rows):
+                for c in range(3):
+                    self.set(x + c, y + r, fg if bits & (4 >> c) else bg)
+            x += 4
+
     def line(self, s: str, y: int, fg: tuple, bg: tuple) -> None:
         """One 8 px row: centred, or the start of a scrolling text."""
         if len(s) <= CHARS:
@@ -138,6 +217,15 @@ class Matrix:
         else:
             self.text(s[:CHARS], 0, y, fg, bg)
             for i in range(3):                       # scroll marker at the right edge
+                self.set(WIDTH - 1 - i, y + 7, (255, 160, 0))
+
+    def tiny_line(self, s: str, y: int, fg: tuple, bg: tuple) -> None:
+        """One 8 px row in the tiny font (rows 2..6): centred, or the start of a scroll."""
+        if tiny_width(s) <= WIDTH:
+            self.tiny(s, (WIDTH - tiny_width(s)) // 2, y + 2, fg, bg)
+        else:
+            self.tiny(s[:WIDTH // 4], 0, y + 2, fg, bg)
+            for i in range(3):
                 self.set(WIDTH - 1 - i, y + 7, (255, 160, 0))
 
     # ------------------------------------------------------------ physical panels
@@ -190,7 +278,8 @@ def _dim(colour: str) -> tuple:
 
 def render_screen(layout: dict, data: PreviewData, rows: int = 32, top_fault: bool = True,
                   msg_offset: int = 0) -> Matrix:
-    """layout: {'lines': ['ticker', 'time/text', ...] x4, 'bg': [colour x4]}"""
+    """layout: {'lines': ['ticker', 'time/text', ...] x4, 'bg': [colour x4],
+    'fg': [[top, bottom] x4] (optional), 'small': [[bool, bool] x4] (optional)}"""
     m = Matrix(rows)
     msgs = list(data.messages)
     msg_i = msg_offset
@@ -212,9 +301,20 @@ def render_screen(layout: dict, data: PreviewData, rows: int = 32, top_fault: bo
         m.fill(y0, 16, bg)
         parts = layout["lines"][band].split("/")
         slots = [(parts[0], y0, True)] if len(parts) == 1 else [(parts[0], y0, False), (parts[1], y0 + 8, False)]
-        for kind, y, full in slots:
-            col = lambda name: RGB["white"] if top_white else RGB.get(name, RGB["white"])
-            big_rgb = RGB["red"] if data.big_red else RGB.get(data.big_colour, RGB["white"])
+        fgs = (layout.get("fg") or [["auto", "auto"]] * 4)[band]
+        smalls = (layout.get("small") or [[False, False]] * 4)[band]
+        for row, (kind, y, full) in enumerate(slots):
+            own = fgs[row] if fgs[row] != "auto" else None      # the row's text colour
+            small = smalls[row]
+
+            def col(name: str, own=own) -> tuple:
+                if own:
+                    return RGB.get(own, RGB["white"])
+                return RGB["white"] if top_white else RGB.get(name, RGB["white"])
+
+            def put(text: str, ty: int, c: tuple, small=small) -> None:
+                (m.tiny_line if small else m.line)(text, ty, c, bg)
+            big_rgb = RGB["red"] if data.big_red else RGB.get(own or data.big_colour, RGB["white"])
             if kind == "big":
                 hourglass = "D" in data.big and big_width(data.big, True) <= WIDTH
                 x0 = (WIDTH - big_width(data.big, hourglass)) // 2
@@ -223,21 +323,43 @@ def render_screen(layout: dict, data: PreviewData, rows: int = 32, top_fault: bo
                     sand = RGB.get(data.sand_colour, (255, 190, 0)) if data.sand_colour != "auto" else (255, 190, 0)
                     draw_hourglass(m, end + 4, y, data.seconds, bg, top_white, sand)
             elif kind == "time":
-                c = RGB["red"] if data.big_red else (big_rgb if data.big_colour != "auto" else col("white"))
-                m.line(data.big, y + 4 if full else y, c, bg)
+                c = RGB["red"] if data.big_red else (big_rgb if own or data.big_colour != "auto" else col("white"))
+                put(data.big, y + 4 if full else y, c)
             elif kind in ("text", "ticker"):
-                c = RGB.get(data.text_colour) if data.text_colour != "auto" else col("green")
-                m.line(data.text, y + 4 if full else y, c, bg)
+                c = col(data.text_colour) if own or data.text_colour == "auto" else RGB.get(data.text_colour)
+                if not own and data.text_colour == "auto":
+                    c = col("green")
+                put(data.text, y + 4 if full else y, c)
+            elif kind == "bigtext":
+                c = col("green") if own or data.text_colour == "auto" else RGB.get(data.text_colour)
+                w = big_width(data.text, False)
+                if w <= WIDTH:
+                    draw_big(m, data.text, (WIDTH - w) // 2, y, c, bg)
+                else:                                    # scrolls on the board: show its start
+                    draw_big(m, data.text, 0, y, c, bg)
+                    for i in range(3):
+                        m.set(WIDTH - 1 - i, y + 15, (255, 160, 0))
+            elif kind in ("now", "timer", "info", "date", "clock"):
+                ty = y + (5 if full else 2)
+                date_c = col("green") if own or data.text_colour == "auto" else RGB.get(data.text_colour)
+                timer_c = RGB["red"] if data.big_red else (big_rgb if own or data.big_colour != "auto" else col("white"))
+                if kind == "info":
+                    left = data.now.rsplit(":", 1)[0]
+                    m.tiny(left, 1, ty, date_c, bg)
+                parts = data.now.split(" ")              # DAY D MON HH:MM:SS
+                right = {"now": data.now, "timer": data.timer, "info": data.timer,
+                         "date": " ".join(parts[:3] + [str(data.year)]), "clock": parts[-1]}[kind]
+                m.tiny(right, WIDTH - 1 - tiny_width(right), ty, timer_c if kind in ("timer", "info") else date_c, bg)
             elif kind == "msg":
                 msg = next_msg()
                 if msg is None:
                     continue
                 l1, l2, colour = msg
                 if full and l2:
-                    m.line(l1, y, col(colour), bg)
-                    m.line(l2, y + 8, col(colour), bg)
+                    put(l1, y, col(colour))
+                    put(l2, y + 8, col(colour))
                 else:
-                    m.line(f"{l1}  {l2}" if l2 else l1, y + 4 if full else y, col(colour), bg)
+                    put(f"{l1}  {l2}" if l2 else l1, y + 4 if full else y, col(colour))
     return m
 
 

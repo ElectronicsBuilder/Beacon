@@ -1,1 +1,1 @@
-"""PC tools for the LED scoreboard: console (USB serial / BLE) and GUI."""
+"""Beacon PC tools: console (USB serial / BLE) and control panel for the LED display."""
