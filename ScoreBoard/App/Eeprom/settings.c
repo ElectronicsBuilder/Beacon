@@ -9,6 +9,7 @@
 #include "settings.h"
 #include "eeprom_24lc.h"
 #include "matrix.h"
+#include "status_led.h"
 #include "cmsis_os.h"
 
 #define SETTINGS_ADDR_MARKER      0x0F00u
@@ -18,6 +19,7 @@
 #define SETTINGS_ADDR_CD_DAYS     0x0F04u
 #define SETTINGS_ADDR_CU_DAYS     0x0F05u
 #define SETTINGS_ADDR_REFRESH     0x0F06u   /* 2 bytes, BCM unit; 0xFFFF = default */
+#define SETTINGS_ADDR_LED         0x0F08u   /* board LED brightness %, 0xFF = default */
 #define SETTINGS_MARKER           0xB7u
 #define SETTINGS_SAVE_DELAY_MS    2000u
 
@@ -50,6 +52,8 @@ void Settings_Load(void)
       Matrix_SetBcmUnit(unit);
     }
   }
+  int16_t led = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_LED);
+  if (led >= 0 && led <= 100) Led_SetBrightness((uint8_t)led);
   int16_t trim = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_RTC_TRIM);
   if (trim >= 0) trim_value = (uint8_t)trim;
   int16_t days = Eeprom24_ReadByte(EE24_ADDR_0, SETTINGS_ADDR_CD_DAYS);
@@ -76,6 +80,11 @@ void Settings_BrightnessChanged(void)
 }
 
 void Settings_RefreshChanged(void)
+{
+  P_Changed();
+}
+
+void Settings_LedChanged(void)
 {
   P_Changed();
 }
@@ -128,6 +137,7 @@ void Settings_Poll(void)
     save_pending = 0;
     P_Write(SETTINGS_ADDR_BRIGHTNESS, Matrix_GetBrightness());
     P_Write(SETTINGS_ADDR_MODE, mode_value);
+    P_Write(SETTINGS_ADDR_LED, Led_GetBrightness());
     P_Write(SETTINGS_ADDR_REFRESH, (uint8_t)Matrix_GetBcmUnit());
     P_Write(SETTINGS_ADDR_REFRESH + 1u, (uint8_t)(Matrix_GetBcmUnit() >> 8));
     P_Write(SETTINGS_ADDR_RTC_TRIM, trim_value);

@@ -13,6 +13,7 @@
 #include "scenes.h"
 #include "countdown.h"
 #include "keys.h"
+#include "status_led.h"
 #include <string.h>
 
 /* Append new games/screens at the end (the saved mode is the index). */
@@ -154,6 +155,7 @@ void Mode_Key(uint8_t key)
   {
     return;
   }
+  Led_Flash(LED_ORANGE, 60);
   if (preview_scene != 0)                        /* scene preview: Left/Right other scene */
   {
     if (key == KB_LEFT || key == KB_RIGHT)

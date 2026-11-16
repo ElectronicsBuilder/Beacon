@@ -9,6 +9,7 @@
 #include "matrix.h"
 #include "layout.h"
 #include "settings.h"
+#include "status_led.h"
 #include "EEPROM.h"
 #include "GAME.h"
 #include "usb_keyboard.h"
@@ -164,6 +165,33 @@ static int P_RefreshRate(int argc, char **argv)
   Cli_Printf("unit=%u", (unsigned)Matrix_GetBcmUnit());
   Cli_Printf("refresh_hz=%lu", (unsigned long)Matrix_RefreshHz());
   Cli_Printf("max_light=%lu%%", (unsigned long)Matrix_MaxLightPercent());
+  return 0;
+}
+
+/* led [bright <0-100> | test]: the four board LEDs */
+static int P_Led(int argc, char **argv)
+{
+  if (argc >= 3 && strcmp(argv[1], "bright") == 0)
+  {
+    char *end;
+    long v = strtol(argv[2], &end, 10);
+    if (*end != '\0' || v < 0 || v > 100) return Cli_Error("brightness 0..100");
+    Led_SetBrightness((uint8_t)v);
+    Settings_LedChanged();
+  }
+  else if (argc >= 2 && strcmp(argv[1], "test") == 0)
+  {
+    Led_Test();
+    Cli_Printf("test=green, orange, red, blue (1 s each)");
+  }
+  else if (argc >= 2)
+  {
+    return Cli_Error("usage: led [bright <0-100> | test]");
+  }
+  uint8_t e = Led_Errors();
+  Cli_Printf("led_bright=%u", (unsigned)Led_GetBrightness());
+  Cli_Printf("errors=%s%s%s%s", e ? "" : "none", (e & 1u) ? "eeprom " : "", (e & 2u) ? "bluetooth " : "",
+             (e & 4u) ? "rtc_trim" : "");
   return 0;
 }
 
@@ -480,6 +508,15 @@ static const CliCommand system_commands[] = {
     "                 flicker) but dimmer at 100 % brightness. Saved.\n"
     "refresh 0        the original 2016 timing (~111 Hz, ~99 %)\n"
     "                 15 ~ 410 Hz, 23 ~ 293 Hz, 31 ~ 241 Hz, 413 ~ 20 Hz" },
+  { "led", "[bright <0-100> | test]", "board LEDs: brightness, test, error codes", P_Led,
+    "led              brightness and active errors\n"
+    "led bright 15    brightness of the 4 board LEDs, 0..100 % (0 = off, saved)\n"
+    "led test         green, orange, red, blue for 1 s each\n"
+    "green   heartbeat (slow breathing; frozen = firmware stuck)\n"
+    "blue    Bluetooth: dim = waiting, bright = connected, flicker = data\n"
+    "orange  blinks while the clock needs syncing; flashes on keyboard keys\n"
+    "red     blink code: 1 EEPROM missing, 2 Bluetooth module not answering,\n"
+    "        3 RTC trim failed; solid red = crashed" },
   { "log", "[level]", "log level", P_Log,
     "log                          show the level\n"
     "log error|warn|info|debug    show messages up to this level (default info)" },

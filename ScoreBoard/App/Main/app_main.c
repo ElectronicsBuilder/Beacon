@@ -177,6 +177,7 @@ void App_Run(void)
     osDelayUntil(next);
     UartRx_Poll();
     Ble_Poll();
+    Led_Poll();                    /* heartbeat, Bluetooth, attention, errors */
     Mode_Key(UsbKbd_GetKey());
     Mode_Tick();
     if (loops % MATRIX_REFRESH_MS == 0u)

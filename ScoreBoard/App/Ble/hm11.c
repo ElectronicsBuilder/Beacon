@@ -1,6 +1,7 @@
 /*
  * hm11.c - HM-11 BLE module as a console port. See hm11.h.
  */
+#include "status_led.h"
 #include "hm11.h"
 #include "app_hal.h"
 #include "cli.h"
@@ -76,6 +77,7 @@ static int P_RxPop(uint8_t *b)
 /* queue bytes for sending; waits (App task) while the buffer is full */
 static void P_Send(const char *s, size_t len)
 {
+  Led_Flash(LED_BLUE, 30);
   for (size_t i = 0; i < len; i++)
   {
     uint16_t next = (uint16_t)((tx_head + 1u) % TX_SIZE);
@@ -333,6 +335,7 @@ void Ble_Poll(void)
   uint8_t b;
   while (P_RxPop(&b))
   {
+    if (state == BLE_CONNECTED) Led_Flash(LED_BLUE, 30);
     P_Byte((char)b);
   }
 }
