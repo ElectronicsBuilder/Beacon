@@ -474,6 +474,7 @@ class App(ctk.CTk):
                 "screens": self.sb.screens(), "players": self.sb.run("game players").lines,
                 "cd": self.sb.run("cd").kv(), "cu": self.sb.run("cu").kv(),
                 "after": self.sb.run("cd after").kv(),
+                "led": self.sb.run("led").kv(),
             }
 
         def done(r):
@@ -496,6 +497,7 @@ class App(ctk.CTk):
             self._fill_screen_form()
             self._fill_timers()
             self._fill_settings()
+            self._fill_leds(r["led"])
 
         self.worker.submit(job, done)
 
@@ -1263,6 +1265,27 @@ class App(ctk.CTk):
                         command=lambda: self.run(f"time trim {'on' if self.trim_var.get() else 'off'}",
                                                  note="RTC trim changed")).grid(row=1, column=0, padx=10, pady=(4, 10), sticky="w")
 
+        f = self._section(tab, "Board LEDs")
+        ctk.CTkLabel(f, text="Brightness").grid(row=1, column=0, padx=12, pady=4, sticky="w")
+        self.led_bright = ctk.CTkSlider(f, from_=0, to=100, number_of_steps=20, width=300,
+                                        command=lambda v: self.led_bright_lbl.configure(text=f"{int(v)} %"))
+        self.led_bright.grid(row=1, column=1, padx=6, pady=4, sticky="w")
+        self.led_bright.bind("<ButtonRelease-1>", lambda _e: self.run(
+            f"led bright {int(self.led_bright.get())}", note=f"Board LEDs {int(self.led_bright.get())} %"))
+        self.led_bright_lbl = ctk.CTkLabel(f, text="- %", width=50)
+        self.led_bright_lbl.grid(row=1, column=2, padx=6, sticky="w")
+        ctk.CTkLabel(f, text="Heartbeat (green)").grid(row=2, column=0, padx=12, pady=4, sticky="w")
+        self.led_hb = ctk.CTkSegmentedButton(f, values=["Fade", "Blink"], command=lambda v: self.run(
+            f"led heartbeat {v.lower()}", note=f"Heartbeat: {v.lower()}"))
+        self.led_hb.grid(row=2, column=1, padx=6, pady=4, sticky="w")
+        ctk.CTkButton(f, text="Test LEDs", width=100, fg_color=C["button2"], hover_color=C["button2_hover"],
+                      command=lambda: self.run("led test", note="LED test: green, orange, red, blue")
+                      ).grid(row=2, column=2, padx=6, pady=4, sticky="w")
+        self.led_info = ctk.CTkLabel(f, text="Green heartbeat   Blue Bluetooth   Orange clock sync / keys   "
+                                             "Red error codes (1 EEPROM, 2 Bluetooth, 3 RTC trim)",
+                                     text_color=C["faint"], font=theme.font(11))
+        self.led_info.grid(row=3, column=0, columnspan=4, padx=12, pady=(2, 10), sticky="w")
+
         f = self._section(tab, "Bluetooth (change while connected over USB serial)")
         ctk.CTkLabel(f, text="Name").grid(row=1, column=0, padx=12, sticky="w")
         self.ble_name = ctk.CTkEntry(f, width=160)
@@ -1284,6 +1307,17 @@ class App(ctk.CTk):
 
     def _fill_settings(self) -> None:
         self.board_info.configure(text="   ".join(f"{k}: {v}" for k, v in self.info.items()))
+
+    def _fill_leds(self, kv: dict) -> None:
+        try:
+            self.led_bright.set(int(kv.get("led_bright", "15")))
+            self.led_bright_lbl.configure(text=f"{kv.get('led_bright', '-')} %")
+        except ValueError:
+            pass
+        self.led_hb.set("Blink" if kv.get("heartbeat") == "blink" else "Fade")
+        errors = kv.get("errors", "none")
+        if errors != "none":
+            self.led_info.configure(text=f"Errors: {errors}", text_color=C["error"])
 
     def _reboot(self) -> None:
         if self.sb is None:

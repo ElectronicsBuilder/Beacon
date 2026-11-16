@@ -10,12 +10,13 @@
 #include "FONT.h"
 #include "keys.h"
 #include "scenes.h"
+#include "status_led.h"
 #include "log.h"
 #include <stdio.h>
 #include <string.h>
 
 typedef enum { ITEM_GAP, ITEM_TIME, ITEM_TICKER, ITEM_ORDER, ITEM_CD_DAYS, ITEM_SCENE, ITEM_SCENE_S, ITEM_THEN,
-               ITEM_BRIGHT, ITEM_REFRESH, ITEM_COUNT } MenuItem;
+               ITEM_BRIGHT, ITEM_REFRESH, ITEM_HEARTBEAT, ITEM_COUNT } MenuItem;
 
 static const struct { const char *title; int lo, hi, step; } items[ITEM_COUNT] = {
   [ITEM_GAP]    = { "MESSAGE GAP",  1, 250, 1 },
@@ -28,6 +29,7 @@ static const struct { const char *title; int lo, hi, step; } items[ITEM_COUNT] =
   [ITEM_CD_DAYS]= { "CD DAYS",      0, 1,   1 },
   [ITEM_BRIGHT] = { "BRIGHTNESS",   MATRIX_BRIGHTNESS_MIN, 100, 5 },
   [ITEM_REFRESH]= { "REFRESH",      0, 700, 10 },   /* Hz; 0 = original 2016 timing */
+  [ITEM_HEARTBEAT]={ "HEARTBEAT",   0, 1,   1 },    /* green board LED: fade / blink */
 };
 
 static uint8_t active;
@@ -50,6 +52,7 @@ static int P_Get(int i)
     case ITEM_THEN:   return plan.then;
     case ITEM_CD_DAYS:return Settings_GetDays(0);
     case ITEM_REFRESH:return Matrix_GetBcmUnit() == 0u ? 0 : (int)Matrix_RefreshHz();
+    case ITEM_HEARTBEAT:return Led_GetHeartbeat();
     default:          return Matrix_GetBrightness();
   }
 }
@@ -68,6 +71,10 @@ static void P_Set(int i, int v)
     case ITEM_SCENE_S:plan.scene_s = (uint16_t)v; break;
     case ITEM_THEN:   plan.then = (uint8_t)v; break;
     case ITEM_CD_DAYS:Settings_SetDays(0, (uint8_t)v); break;
+    case ITEM_HEARTBEAT:
+      Led_SetHeartbeat((uint8_t)v);
+      Settings_LedChanged();
+      break;
     case ITEM_REFRESH:
       if (v == 0) Matrix_SetBcmUnit(0);             /* original timing */
       else Matrix_SetRefreshHz((uint32_t)(v < 20 ? 20 : v));
@@ -98,6 +105,7 @@ static void P_Draw(void)
       break;
     case ITEM_THEN:   snprintf(value, sizeof value, "< %s >", v ? "END SCREEN" : "HOLD 0:00"); break;
     case ITEM_CD_DAYS:snprintf(value, sizeof value, "< %s >", v ? "49D LABEL" : "LABEL ONLY"); break;
+    case ITEM_HEARTBEAT:snprintf(value, sizeof value, "< %s >", v ? "BLINK" : "FADE"); break;
     case ITEM_REFRESH:
       if (typed < 0 && v == 0) snprintf(value, sizeof value, "< ORIGINAL >");
       else snprintf(value, sizeof value, "< %d HZ >", typed >= 0 ? typed : v);

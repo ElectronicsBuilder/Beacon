@@ -76,6 +76,13 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # LED panel rows driven: 64 = E line (HUB75 pin 8) wired to PC2, all 4 lines
 # (the board since the MCU replacement); 32 = E tied to GND (old board,
 # lines 1 and 3 only). Change with: cmake --preset Debug -DMATRIX_PANEL_ROWS=32
+# The display drawing code runs for every frame: optimise it in Debug builds
+# too (at -O0 a full matrix rebuild takes ~30 ms and slows the App loop).
+set_source_files_properties(
+    App/Matrix/matrix.c App/Matrix/font_tiny.c App/Modes/scenes.c
+    App/Modes/ui_bands.c App/Modes/ui_text_line.c
+    PROPERTIES COMPILE_OPTIONS "-O2")
+
 set(MATRIX_PANEL_ROWS 64 CACHE STRING "LED panel rows driven (32 or 64)")
 set_property(CACHE MATRIX_PANEL_ROWS PROPERTY STRINGS 32 64)
 

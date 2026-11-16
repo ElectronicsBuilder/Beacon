@@ -179,6 +179,13 @@ static int P_Led(int argc, char **argv)
     Led_SetBrightness((uint8_t)v);
     Settings_LedChanged();
   }
+  else if (argc >= 3 && strcmp(argv[1], "heartbeat") == 0)
+  {
+    if (strcmp(argv[2], "fade") == 0) Led_SetHeartbeat(LED_HB_FADE);
+    else if (strcmp(argv[2], "blink") == 0) Led_SetHeartbeat(LED_HB_BLINK);
+    else return Cli_Error("heartbeat fade | blink");
+    Settings_LedChanged();
+  }
   else if (argc >= 2 && strcmp(argv[1], "test") == 0)
   {
     Led_Test();
@@ -186,10 +193,11 @@ static int P_Led(int argc, char **argv)
   }
   else if (argc >= 2)
   {
-    return Cli_Error("usage: led [bright <0-100> | test]");
+    return Cli_Error("usage: led [bright <0-100> | heartbeat fade|blink | test]");
   }
   uint8_t e = Led_Errors();
   Cli_Printf("led_bright=%u", (unsigned)Led_GetBrightness());
+  Cli_Printf("heartbeat=%s", Led_HeartbeatName(Led_GetHeartbeat()));
   Cli_Printf("errors=%s%s%s%s", e ? "" : "none", (e & 1u) ? "eeprom " : "", (e & 2u) ? "bluetooth " : "",
              (e & 4u) ? "rtc_trim" : "");
   return 0;
@@ -508,11 +516,12 @@ static const CliCommand system_commands[] = {
     "                 flicker) but dimmer at 100 % brightness. Saved.\n"
     "refresh 0        the original 2016 timing (~111 Hz, ~99 %)\n"
     "                 15 ~ 410 Hz, 23 ~ 293 Hz, 31 ~ 241 Hz, 413 ~ 20 Hz" },
-  { "led", "[bright <0-100> | test]", "board LEDs: brightness, test, error codes", P_Led,
+  { "led", "[bright <0-100> | heartbeat fade|blink | test]", "board LEDs: brightness, test, error codes", P_Led,
     "led              brightness and active errors\n"
     "led bright 15    brightness of the 4 board LEDs, 0..100 % (0 = off, saved)\n"
+    "led heartbeat blink   green LED: short blink every second (fade = slow fade)\n"
     "led test         green, orange, red, blue for 1 s each\n"
-    "green   heartbeat (slow breathing; frozen = firmware stuck)\n"
+    "green   heartbeat (fade or blink; frozen = firmware stuck)\n"
     "blue    Bluetooth: dim = waiting, bright = connected, flicker = data\n"
     "orange  blinks while the clock needs syncing; flashes on keyboard keys\n"
     "red     blink code: 1 EEPROM missing, 2 Bluetooth module not answering,\n"

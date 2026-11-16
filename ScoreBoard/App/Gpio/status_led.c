@@ -19,8 +19,10 @@ static const uint16_t LED_PIN[LED_ANZ] = {
 
 static volatile uint8_t duty[LED_ANZ];   /* 0..PWM_LEVELS, read by the interrupt */
 static uint8_t brightness = LED_BRIGHTNESS_DEFAULT;
-static uint16_t flash_ms[LED_ANZ];
-static uint32_t ms;                      /* Led_Poll calls */
+static uint8_t heartbeat = LED_HB_FADE;
+static uint32_t flash_until[LED_ANZ];    /* ms tick when the activity flash ends */
+static uint32_t ms;                      /* HAL tick of this Led_Poll: patterns follow real
+                                            time even when the App loop is slow */
 static uint32_t test_until;              /* Led_Test: ms value when it ends, 0 = off */
 
 /* ------------------------------------------------------------ PWM (TIM7) */
@@ -74,13 +76,21 @@ void Led_Init(void)
 
 void Led_SetBrightness(uint8_t percent) { brightness = percent > 100u ? 100u : percent; }
 uint8_t Led_GetBrightness(void)         { return brightness; }
+void Led_SetHeartbeat(uint8_t style)    { heartbeat = style < LED_HB_COUNT ? style : LED_HB_FADE; }
+uint8_t Led_GetHeartbeat(void)          { return heartbeat; }
+
+const char *Led_HeartbeatName(uint8_t style)
+{
+  return style == LED_HB_BLINK ? "blink" : "fade";
+}
 
 void Led_Flash(LED_NAME_t led, uint16_t length_ms)
 {
-  if (led < LED_ANZ && flash_ms[led] < length_ms) flash_ms[led] = length_ms;
+  uint32_t end = HAL_GetTick() + length_ms;
+  if (led < LED_ANZ && (int32_t)(end - flash_until[led]) > 0) flash_until[led] = end;
 }
 
-void Led_Test(void) { test_until = ms + 4u * 1000u + 1u; }
+void Led_Test(void) { test_until = HAL_GetTick() + 4u * 1000u + 1u; }
 
 uint8_t Led_Errors(void)
 {
@@ -124,7 +134,7 @@ static uint32_t P_RedLevel(uint8_t errors)
 
 void Led_Poll(void)
 {
-  ms++;
+  ms = HAL_GetTick();
   uint32_t level[LED_ANZ];
 
   if (test_until != 0u && (int32_t)(test_until - ms) > 0)
@@ -135,10 +145,18 @@ void Led_Poll(void)
   }
   test_until = 0;
 
-  /* green: breathing, 3 s period, never fully off */
-  uint32_t p = ms % 3000u;
-  uint32_t tri = p < 1500u ? p : 3000u - p;              /* 0..1500 */
-  level[LED_GREEN] = 40u + tri * 215u / 1500u;
+  /* green heartbeat: fade = breathing, 3 s period, never fully off;
+   * blink = 120 ms flash every second */
+  if (heartbeat == LED_HB_BLINK)
+  {
+    level[LED_GREEN] = (ms % 1000u) < 120u ? 255u : 0u;
+  }
+  else
+  {
+    uint32_t p = ms % 3000u;
+    uint32_t tri = p < 1500u ? p : 3000u - p;            /* 0..1500 */
+    level[LED_GREEN] = 40u + tri * 215u / 1500u;
+  }
 
   /* blue: Bluetooth state */
   switch (Ble_State())
@@ -156,9 +174,8 @@ void Led_Poll(void)
 
   for (int n = 0; n < LED_ANZ; n++)
   {
-    if (flash_ms[n] > 0u)                                /* activity: blink against the base */
+    if ((int32_t)(flash_until[n] - ms) > 0)               /* activity: blink against the base */
     {
-      flash_ms[n]--;
       level[n] = (level[n] > 128u) ? 20u : 255u;
     }
     duty[n] = P_Duty(level[n]);
